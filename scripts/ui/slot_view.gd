@@ -7,6 +7,7 @@ signal hovered(view: SlotView, item: Item)
 
 var slot: String = ""
 var equipment: Equipment
+var hidden_ref: Dictionary = {}
 
 
 func _init() -> void:
@@ -32,7 +33,7 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	draw_string(font, Vector2(2, 8), Equipment.SLOT_NAMES.get(slot, slot), HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(0.6, 0.65, 0.7))
 	var it: Item = equipment.get_slot(slot) if equipment else null
-	if it:
+	if it and not hidden_ref.has(it):
 		var r := Rect2(2, 11, size.x - 4, size.y - 13)
 		var c := it.color()
 		draw_rect(r, c.darkened(0.25))
@@ -41,3 +42,7 @@ func _draw() -> void:
 		if it.insured:
 			draw_rect(Rect2(r.position.x + r.size.x - 7, r.position.y, 7, 8), Color(0.2, 0.55, 0.9))
 			draw_string(font, r.position + Vector2(r.size.x - 6, 7), "U", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1, 1, 1))
+		if it.type() == "weapon":
+			var txt := "brak mag." if it.mag == null else "%d/%d" % [it.mag.loaded, it.mag.mag_cap()]
+			draw_string(font, r.position + Vector2(2, r.size.y - 2), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 7,
+				Color(1.0, 0.5, 0.4) if it.mag == null else Color(0.7, 1.0, 0.7))

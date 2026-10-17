@@ -112,6 +112,53 @@ func raw_weight() -> float:
 	return s
 
 
+## Układa przedmioty od nowa (największe pierwsze) i scala stosy. Zwraca false i nic nie zmienia,
+## gdy nowy układ się nie mieści.
+func repack() -> bool:
+	var old := items.duplicate()
+	var pool: Array = []
+	for it: Item in old:
+		pool.append(it)
+	# scal stosy
+	var merged: Array = []
+	for it: Item in pool:
+		var done := false
+		if it.stack_max() > 1:
+			for o: Item in merged:
+				if o.id == it.id and o.count < o.stack_max():
+					var mv := mini(o.stack_max() - o.count, it.count)
+					o.count += mv
+					it.count -= mv
+					if it.count <= 0:
+						done = true
+						break
+		if not done:
+			merged.append(it)
+	merged.sort_custom(func(a: Item, b: Item):
+		var aa: int = a.def().get("w", 1) * a.def().get("h", 1)
+		var bb: int = b.def().get("w", 1) * b.def().get("h", 1)
+		if aa != bb:
+			return aa > bb
+		return a.id < b.id)
+	var saved := []
+	for it: Item in old:
+		saved.append([it, it.x, it.y, it.rotated, it.count])
+	items.clear()
+	for it: Item in merged:
+		if not add_auto(it):
+			# nie weszło: przywróć stary układ
+			items.clear()
+			for s in saved:
+				var o: Item = s[0]
+				o.x = s[1]
+				o.y = s[2]
+				o.rotated = s[3]
+				o.count = s[4]
+				items.append(o)
+			return false
+	return true
+
+
 ## Waga zawartości po redukcji pojemnika.
 func effective_weight() -> float:
 	return raw_weight() * (1.0 - reduction)

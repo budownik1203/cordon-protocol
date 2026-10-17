@@ -21,6 +21,8 @@ var weapon_item: Item
 var weapon_slot: String = "primary"
 var body: Body
 var reloading: bool = false
+var reload_kind: String = ""  # "swap" (wymiana magazynka) | "feed" (ręczne dobijanie nabojów)
+var loading_mags: bool = false  # trwa pakowanie luźnej amunicji do magazynków (C)
 var crouching: bool = false
 var sprinting: bool = false
 var stamina: float = 100.0
@@ -32,6 +34,12 @@ var last_hit_source: String = ""
 
 var _cooldown: float = 0.0
 var _reload_left: float = 0.0
+var _reload_total: float = 0.0
+var _reload_src: Dictionary = {}
+var _feed_t: float = 0.0
+var _combine_t: float = 0.0
+const FEED_TIME := 0.3  # sekundy na jeden nabój przy ręcznym ładowaniu
+const COMBINE_TIME := 0.09  # sekundy na jeden nabój przy pakowaniu magazynków
 var _use_left: float = 0.0
 var _use_extra: float = 0.0
 var _recoil_deg: float = 0.0
@@ -45,10 +53,10 @@ var _heart_t: float = 0.0
 ## Zgodność z testami: liczba naboi w magazynku aktualnej broni.
 var ammo: int:
 	get:
-		return weapon_item.loaded if weapon_item else 0
+		return weapon_item.rounds() if weapon_item else 0
 	set(v):
-		if weapon_item:
-			weapon_item.loaded = v
+		if weapon_item and weapon_item.mag:
+			weapon_item.mag.loaded = v
 
 
 func setup(p_equipment: Equipment) -> void:
@@ -83,6 +91,8 @@ func _select_weapon(slot: String) -> void:
 	weapon_slot = slot
 	weapon_item = equipment.get_slot(slot)
 	reloading = false
+	reload_kind = ""
+	loading_mags = false
 	if weapon_item == null:
 		weapon = null
 		return
@@ -111,10 +121,54 @@ func _ammo_id() -> String:
 	return "ammo_" + String(weapon_item.def().get("ammo_type", ""))
 
 
-func reserve_ammo() -> int:
+func _mag_id() -> String:
 	if weapon_item == null:
-		return 0
-	return equipment.count_of(_ammo_id())
+		return ""
+	return String(weapon_item.def().get("mag_id", ""))
+
+
+## Luźna amunicja pasująca do broni.
+func loose_ammo() -> int:
+	return equipment.count_of(_ammo_id()) if weapon_item else 0
+
+
+## Zapasowe magazynki do aktualnej broni, od najpełniejszego (szybkie kieszenie wygrywają remisy).
+func spare_mags() -> Array:
+	var out := equipment.find_mags(_mag_id()) if weapon_item else []
+	out.sort_custom(func(a, b):
+		if a["item"].loaded != b["item"].loaded:
+			return a["item"].loaded > b["item"].loaded
+		return a["quick"] and not b["quick"])
+	return out
+
+
+func spare_rounds() -> int:
+	var n := 0
+	for m in spare_mags():
+		n += m["item"].loaded
+	return n
+
+
+## Naboje dostępne poza magazynkiem w broni (do HUD i testów).
+func reserve_ammo() -> int:
+	return spare_rounds() + loose_ammo()
+
+
+## Najlepszy zapasowy magazynek, który faktycznie coś daje (więcej nabojów niż obecny).
+func best_spare() -> Dictionary:
+	var cur := ammo
+	for m in spare_mags():
+		if m["item"].loaded > cur:
+			return m
+	return {}
+
+
+func can_reload() -> bool:
+	if weapon_item == null:
+		return false
+	if not best_spare().is_empty():
+		return true
+	return weapon_item.mag != null and ammo < weapon_item.mag.mag_cap() and loose_ammo() > 0
 
 
 ## Przenosi pancerz z przedmiotów do modelu ciała (zużycie zapisywane z powrotem).
@@ -225,13 +279,21 @@ func _physics_process(delta: float) -> void:
 		_swap_weapon()
 		return
 
+	if loading_mags:
+		_tick_combine(delta)
+		return
 	if reloading:
-		_reload_left -= delta
-		if _reload_left <= 0.0:
-			reloading = false
-			_finish_reload()
+		if reload_kind == "feed":
+			_tick_feed(delta)
+		else:
+			_reload_left -= delta
+			if _reload_left <= 0.0:
+				reloading = false
+				_finish_reload()
 	else:
-		if Input.is_action_just_pressed("reload") and not input_locked and ammo < weapon.magazine_size and reserve_ammo() > 0:
+		if Input.is_action_just_pressed("combine") and not input_locked:
+			start_combine()
+		elif Input.is_action_just_pressed("reload") and not input_locked and can_reload():
 			_start_reload()
 		elif Input.is_action_pressed("fire") and _cooldown <= 0.0 and not input_locked and not sprinting:
 			_fire()
@@ -298,38 +360,120 @@ func _handle_healing(delta: float) -> void:
 
 
 func _start_reload() -> void:
+	var spare := best_spare()
 	reloading = true
-	var t := weapon.reload_time * body.reload_mult()
-	var has_quick := false
-	for e in equipment.bags():
-		if e["quick"] and e["bag"].count_of(_ammo_id()) > 0:
-			has_quick = true
-	if not has_quick:
-		t += 1.2  # amunicja w plecaku
-	_reload_left = t
-	Audio.play("reload_start", -4.0)
+	_reload_src = spare
+	if not spare.is_empty():
+		reload_kind = "swap"
+		var t := weapon.reload_time * body.reload_mult()
+		# taktyczna wymiana (magazynek jeszcze coś ma) jest szybsza niż po opróżnieniu
+		t *= 0.5 if ammo > 0 else 0.8
+		if weapon_item.mag == null:
+			t *= 0.8
+		if not spare["quick"]:
+			t += 1.0  # magazynek z plecaka
+		_reload_left = t
+		_reload_total = t
+		Audio.play("reload_start", -4.0)
+	else:
+		reload_kind = "feed"
+		_feed_t = FEED_TIME * body.reload_mult()
+		_reload_total = 0.0
+		Audio.play("reload_start", -8.0)
 	ammo_changed.emit(ammo, weapon.magazine_size, true)
 
 
 func _finish_reload() -> void:
 	if weapon_item == null:
 		return
-	var need := weapon.magazine_size - weapon_item.loaded
-	var got: int = equipment.take(_ammo_id(), need)[0]
-	weapon_item.loaded += got
-	Audio.play("reload_end", -3.0)
+	var m := _reload_src
+	if m.is_empty() or not (m["bag"] as Bag).items.has(m["item"]):
+		m = best_spare()
+	if not m.is_empty():
+		var sp: Item = m["item"]
+		var b: Bag = m["bag"]
+		var px := sp.x
+		var py := sp.y
+		var rot := sp.rotated
+		b.remove(sp)
+		var old := weapon_item.mag
+		weapon_item.mag = sp
+		if old != null:
+			old.rotated = rot
+			if not (b.fits(old, px, py) and b.place(old, px, py)):
+				equipment.add_auto(old, true)
+		Audio.play("reload_end", -3.0)
+	_reload_src = {}
 	ammo_changed.emit(ammo, weapon.magazine_size, false)
 
 
+## Ręczne dobijanie nabojów do włożonego magazynka (gdy brak naładowanych zapasowych).
+func _tick_feed(delta: float) -> void:
+	var mg := weapon_item.mag
+	if mg == null or loose_ammo() <= 0 or mg.loaded >= mg.mag_cap() or best_spare().size() > 0:
+		reloading = false
+		reload_kind = ""
+		ammo_changed.emit(ammo, weapon.magazine_size, false)
+		return
+	if Input.is_action_just_pressed("fire") and ammo > 0 and not input_locked:
+		reloading = false
+		reload_kind = ""
+		ammo_changed.emit(ammo, weapon.magazine_size, false)
+		return
+	_feed_t -= delta
+	if _feed_t <= 0.0:
+		_feed_t = FEED_TIME * body.reload_mult()
+		if equipment.take(_ammo_id(), 1)[0] > 0:
+			mg.loaded += 1
+			Audio.play("ammo_tick", -8.0, 1.0 + 0.2 * float(mg.loaded) / maxf(1.0, mg.mag_cap()), 0.03)
+			ammo_changed.emit(ammo, weapon.magazine_size, true)
+
+
+## V: pakowanie luźnej amunicji do magazynków w ekwipunku (trwa, można przerwać strzałem lub ruchem biegu).
+func start_combine() -> void:
+	if reloading or loading_mags:
+		return
+	if not _has_combine_work():
+		return
+	loading_mags = true
+	_combine_t = COMBINE_TIME
+	Audio.play("reload_start", -10.0)
+
+
+func _has_combine_work() -> bool:
+	for e in equipment.bags():
+		if e["slot"] == "secure":
+			continue
+		for it: Item in e["bag"].items:
+			if it.is_mag() and it.loaded < it.mag_cap() and equipment.count_of(it.ammo_item_id()) > 0:
+				return true
+	return false
+
+
+func _tick_combine(delta: float) -> void:
+	if Input.is_action_just_pressed("fire") or Input.is_action_just_pressed("reload") or sprinting or input_locked:
+		loading_mags = false
+		return
+	_combine_t -= delta
+	if _combine_t <= 0.0:
+		_combine_t = COMBINE_TIME
+		var m := equipment.load_step()
+		if m == null:
+			loading_mags = false
+			Audio.play("reload_end", -8.0)
+		else:
+			Audio.play("ammo_tick", -12.0, 0.9 + 0.3 * float(m.loaded) / maxf(1.0, m.mag_cap()), 0.03)
+
+
 func _fire() -> void:
-	if weapon_item.loaded <= 0:
-		if reserve_ammo() > 0:
+	if ammo <= 0:
+		if can_reload():
 			_start_reload()
 		else:
 			Audio.play("empty_click", -4.0)
 		_cooldown = 0.25
 		return
-	weapon_item.loaded -= 1
+	weapon_item.mag.loaded -= 1
 	_cooldown = weapon.seconds_per_shot()
 	var spread := deg_to_rad(randf_range(-current_spread_deg(), current_spread_deg()))
 	var dir := _aim_dir.rotated(spread)

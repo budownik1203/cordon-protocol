@@ -78,10 +78,10 @@ func _stock() -> Array:
 	var kompleks := Game.is_unlocked("kompleks")
 	match trader:
 		"kw":
-			var s := ["pistol_p9", "smg_kr", "rifle_skm", "ammo_9", "ammo_556", "helmet_2", "helmet_3", "armor_3",
+			var s := ["pistol_p9", "smg_kr", "rifle_skm", "ammo_9", "ammo_556", "mag_9_12", "mag_9_32", "mag_556_30", "helmet_2", "helmet_3", "armor_3",
 				"armor_4", "rig_a", "rig_b", "belt_a", "backpack_a", "backpack_b"]
 			if kompleks:
-				s.append_array(["dmr_sw", "ammo_762", "helmet_4", "armor_5"])
+				s.append_array(["dmr_sw", "ammo_762", "mag_762_10", "helmet_4", "armor_5"])
 			return s
 		"med":
 			return ["bandage", "hemostatic", "splint", "painkiller"]
@@ -102,7 +102,7 @@ func sell_rate(it: Item) -> float:
 	var t := it.type()
 	match trader:
 		"kw":
-			if t in ["weapon", "armor", "container", "ammo"]:
+			if t in ["weapon", "armor", "container", "ammo", "mag"]:
 				return 0.55
 		"med":
 			if t == "med":
@@ -203,8 +203,6 @@ func _buy(id: String) -> void:
 		ui._flash("Za mało bonów.")
 		return
 	var it := Item.new(id, qty)
-	if d.get("type", "") == "weapon":
-		it.loaded = 0
 	if not Game.stash.add_auto(it):
 		say("no_room")
 		Audio.play("ui_deny")

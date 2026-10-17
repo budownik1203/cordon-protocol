@@ -21,7 +21,12 @@ static func _make(e: Array, rng: RandomNumberGenerator, biome: String = "przedmi
 		n = rng.randi_range(e[2], e[3])
 	var it := Item.new(e[1], n)
 	if it.def().get("type", "") == "weapon":
-		it.loaded = 0
+		var mid: String = it.def().get("mag_id", "")
+		if mid != "" and rng.randf() < 0.6:
+			it.mag = Item.new(mid)
+			it.mag.loaded = rng.randi_range(0, it.mag.mag_cap())
+	elif it.is_mag():
+		it.loaded = rng.randi_range(0, it.mag_cap())
 	if it.durability > 0.0:
 		it.durability *= rng.randf_range(0.5, 1.0)
 	if it.id == "document":
@@ -31,10 +36,10 @@ static func _make(e: Array, rng: RandomNumberGenerator, biome: String = "przedmi
 
 const T_SZAFKA := [
 	[20, "bandage", 1, 2], [10, "painkiller", 1, 1], [8, "hemostatic", 1, 1], [6, "splint", 1, 1],
-	[16, "ammo_9", 8, 24], [14, "watch"], [12, "tape"], [10, "lamp"], [4, "battery"],
+	[16, "ammo_9", 8, 24], [4, "mag_9_12"], [14, "watch"], [12, "tape"], [10, "lamp"], [4, "battery"],
 ]
 const T_SKRZYNIA := [
-	[22, "ammo_556", 15, 45], [20, "ammo_9", 15, 40], [8, "armor_3"], [8, "helmet_2"], [4, "helmet_3"],
+	[22, "ammo_556", 15, 45], [20, "ammo_9", 15, 40], [8, "mag_556_30"], [6, "mag_9_32"], [6, "mag_9_12"], [8, "armor_3"], [8, "helmet_2"], [4, "helmet_3"],
 	[2, "armor_4"], [6, "rig_a"], [6, "rig_b"], [5, "belt_a"], [4, "backpack_a"], [4, "backpack_b"],
 	[6, "pistol_p9"], [4, "smg_kr"], [3, "rifle_skm"], [10, "battery"], [7, "radio"],
 ]
@@ -43,7 +48,7 @@ const T_BIURKO := [
 ]
 const T_SEJF := [
 	[14, "sample"], [10, "key_exit"], [12, "watch", 1, 2], [8, "rifle_skm"], [8, "armor_4"], [8, "helmet_3"],
-	[10, "ammo_556", 30, 60], [8, "hemostatic", 1, 2], [6, "radio"],
+	[10, "ammo_556", 30, 60], [6, "mag_556_30"], [8, "hemostatic", 1, 2], [6, "radio"],
 ]
 const T_SZAB := [
 	[22, "ammo_9", 8, 25], [18, "bandage", 1, 1], [8, "painkiller"], [12, "watch"], [8, "tape"],
@@ -52,11 +57,11 @@ const T_SZAB := [
 const T_NAJEM := [
 	[22, "ammo_556", 15, 40], [10, "ammo_9", 10, 25], [18, "bandage", 1, 2], [12, "painkiller"],
 	[8, "hemostatic"], [7, "armor_3"], [8, "helmet_2"], [5, "rifle_skm"], [4, "smg_kr"], [6, "radio"],
-	[5, "sample"], [2, "ammo_762", 10, 20], [1, "dmr_sw"],
+	[5, "sample"], [6, "mag_556_30"], [4, "mag_9_32"], [2, "ammo_762", 10, 20], [1, "dmr_sw"],
 ]
 const T_WOJSK := [
 	[22, "ammo_556", 20, 50], [14, "hemostatic", 1, 2], [12, "bandage", 1, 2], [8, "helmet_3"], [6, "armor_4"],
-	[10, "rifle_skm"], [8, "key_exit"], [6, "radio"], [6, "battery"], [4, "document"], [4, "ammo_762", 10, 30], [2, "dmr_sw"], [2, "helmet_4"],
+	[10, "rifle_skm"], [10, "mag_556_30"], [3, "mag_762_10"], [8, "key_exit"], [6, "radio"], [6, "battery"], [4, "document"], [4, "ammo_762", 10, 30], [2, "dmr_sw"], [2, "helmet_4"],
 ]
 const T_KORP := [
 	[24, "sample"], [20, "document"], [10, "tape"], [10, "ammo_9", 10, 20], [6, "key_exit"],

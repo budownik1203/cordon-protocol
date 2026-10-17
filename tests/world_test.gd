@@ -45,9 +45,7 @@ func _setup() -> void:
 
 
 func _loaded(id: String) -> Item:
-	var it := Item.new(id)
-	it.loaded = 30
-	return it
+	return Item.make_weapon(id)
 
 
 func _process(_delta: float) -> bool:
@@ -143,7 +141,7 @@ func _tutorial() -> void:
 				t.take_hit(40.0, Vector2.RIGHT)
 	if _frames == 30:
 		_ok(tut.step == 2, "krok 2 po manekinach: %d" % tut.step)
-		player.weapon_item.loaded = 5
+		player.weapon_item.mag.loaded = 5
 		player._start_reload()
 	if _frames == 30 + 60 * 5:
 		_ok(tut.step == 3, "krok 3 po przeładowaniu: %d" % tut.step)

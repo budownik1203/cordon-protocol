@@ -160,6 +160,9 @@ def make_ui():
         return np.sin(2 * np.pi * f * t_(d)) * env(int(SR * d), tau or d / 3)
     save("pickup", norm(mix(pad(blip(880, 0.08), 0.18), np.roll(pad(blip(1320, 0.09), 0.18), int(SR * 0.07)))) * 0.8)
     save("ui_click", norm(blip(1250, 0.035, 0.01)) * 0.7)
+    # nabój wsuwany do magazynka: krótki metaliczny stuk
+    tick = bp(noise(0.03), 3200, 5) * env(int(SR * 0.03), 0.008) + 0.5 * blip(2400, 0.03, 0.006)
+    save("ammo_tick", norm(tick) * 0.7)
     save("ui_deny", norm(np.sign(np.sin(2 * np.pi * 150 * t_(0.14))) * env(int(SR * 0.14), 0.06)) * 0.5)
     coin = (blip(1400, 0.3, 0.09) + 0.6 * blip(2100, 0.3, 0.06) + 0.3 * blip(2800, 0.3, 0.05))
     save("ui_buy", norm(mix(pad(coin, 0.4), np.roll(pad(coin * 0.7, 0.4), int(SR * 0.06)))) * 0.8)

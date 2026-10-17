@@ -25,9 +25,7 @@ func _setup() -> void:
 
 
 func _loaded(id: String) -> Item:
-	var it := Item.new(id)
-	it.loaded = 30
-	return it
+	return Item.make_weapon(id)
 
 
 func _process(_delta: float) -> bool:

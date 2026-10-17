@@ -9,25 +9,32 @@ var _dirs := ["move_left", "move_right", "move_up", "move_down"]
 var _held := []
 var _shots := 0
 var _seed := 3
+var _biome := "przedmiescia"
 
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		_seed = int(args[0])
+	if args.size() > 1:
+		_biome = args[1]
 	seed(_seed)
 
 
 func _setup() -> void:
 	var game := root.get_node("Game")
 	game.new_game()
-	var rifle := Item.new("rifle_skm")
-	game.equipment.equip("primary", rifle)
+	game.next_raid = {"biome": _biome, "tutorial": false}
+	game.equipment.equip("primary", Item.make_weapon("rifle_skm"))
 	game.equipment.equip("armor", Item.new("armor_3"))
 	game.equipment.equip("head", Item.new("helmet_2"))
 	game.equipment.equip("rig", Item.new("rig_a"))
 	game.equipment.equip("backpack", Item.new("backpack_a"))
-	game.equipment.add_auto(Item.new("ammo_556", 300), true)
+	for i in 3:
+		var m := Item.new("mag_556_30")
+		m.loaded = 30
+		game.equipment.add_auto(m, true)
+	game.equipment.add_auto(Item.new("ammo_556", 200), true)
 	game.equipment.add_auto(Item.new("bandage", 4), true)
 	game.equipment.add_auto(Item.new("hemostatic", 2), true)
 	_raid = load("res://scenes/raid.tscn").instantiate()
@@ -89,7 +96,7 @@ func _process(_delta: float) -> bool:
 	else:
 		Input.action_release("reload")
 	if _frames > 60 * 240:
-		print("BOT survived 4 minutes; shots=", _shots, " enemies=", _raid.enemies.size(), " fauna=", _raid.faunas.size(), " threat=", int(_raid.threat))
+		print("BOT survived 4 minutes; spare_rounds=", p.spare_rounds(), " loose=", p.loose_ammo(), " shots=", _shots, " enemies=", _raid.enemies.size(), " fauna=", _raid.faunas.size(), " threat=", int(_raid.threat))
 		print("BOT TEST OK")
 		quit(0)
 	return false

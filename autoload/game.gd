@@ -57,12 +57,20 @@ func new_game() -> void:
 	extr_by_biome = {}
 	last_ctx = "first"
 	var starter := [
-		["rifle_skm", 1], ["ammo_556", 90], ["ammo_9", 60], ["pistol_p9", 1], ["armor_3", 1],
+		["rifle_skm", 1], ["mag_556_30", 3], ["ammo_556", 90], ["ammo_9", 60], ["pistol_p9", 1],
+		["mag_9_12", 2], ["armor_3", 1],
 		["helmet_2", 1], ["rig_a", 1], ["backpack_b", 1], ["belt_a", 1], ["secure_a", 1],
 		["bandage", 4], ["hemostatic", 2], ["splint", 1], ["painkiller", 3],
 	]
 	for e in starter:
-		stash.add_auto(Item.new(e[0], e[1]))
+		if e[0] == "rifle_skm" or e[0] == "pistol_p9":
+			stash.add_auto(Item.make_weapon(e[0]))
+			continue
+		for k in (e[1] if Item.new(e[0]).is_mag() else 1):
+			var it := Item.new(e[0], 1 if Item.new(e[0]).is_mag() else e[1])
+			if it.is_mag():
+				it.loaded = it.mag_cap()
+			stash.add_auto(it)
 	save_game()
 
 
@@ -70,9 +78,7 @@ func new_game() -> void:
 func give_starter_kit() -> void:
 	var eq := equipment
 	if eq.get_slot("pistol") == null:
-		var p := Item.new("pistol_p9")
-		p.loaded = 12
-		eq.equip("pistol", p)
+		eq.equip("pistol", Item.make_weapon("pistol_p9"))
 	if eq.get_slot("belt") == null:
 		eq.equip("belt", Item.new("belt_a"))
 	if eq.get_slot("secure") == null:
@@ -291,8 +297,6 @@ func complete_quest(id: String, choice: int) -> String:
 	if q["type"] == "deliver":
 		take_item(q["item"], q["n"])
 	for it in items:
-		if it.type() == "weapon":
-			it.loaded = 0
 		stash.add_auto(it)
 	money += int(reward.get("money", 0))
 	quests[id]["state"] = "done"

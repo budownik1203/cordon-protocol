@@ -69,8 +69,12 @@ func _setup() -> void:
 	elif _scene == "map":
 		game.equipment.equip("primary", _l("rifle_skm"))
 		root.add_child(load("res://scenes/raid.tscn").instantiate())
-	elif _scene == "inv":
+	elif _scene == "inv" or _scene == "invload" or _scene == "invfly":
 		game.equipment.equip("primary", _l("rifle_skm"))
+		for k in 3:
+			var mg := Item.new("mag_556_30")
+			mg.loaded = [30, 0, 11][k]
+			game.equipment.add_auto(mg, true)
 		game.equipment.equip("backpack", Item.new("backpack_a"))
 		game.equipment.equip("rig", Item.new("rig_a"))
 		game.equipment.equip("belt", Item.new("belt_a"))
@@ -78,13 +82,11 @@ func _setup() -> void:
 		game.equipment.add_auto(Item.new("bandage", 3), true)
 		var r: Node = load("res://scenes/raid.tscn").instantiate()
 		root.add_child(r)
-		_wait = 30
+		_wait = maxi(_wait, 30)
 
 
 func _l(id: String) -> Item:
-	var it := Item.new(id)
-	it.loaded = 30
-	return it
+	return Item.make_weapon(id)
 
 
 func _process(_delta: float) -> bool:
@@ -116,6 +118,37 @@ func _process(_delta: float) -> bool:
 				c.color = Color(1, 1, 1)
 		for e in raid.enemies:
 			e.visible = true
+	if _scene == "invload" and _frames == 22:
+		var raid3: Node = root.get_child(root.get_child_count() - 1)
+		raid3.inv_ui.open_player()
+		var eq = root.get_node("Game").equipment
+		var empty = null
+		var k2 := 0
+		for m in eq.find_mags("mag_556_30"):
+			m["item"].loaded = [0, 11, 30][k2 % 3]
+			k2 += 1
+			if m["item"].loaded == 0:
+				empty = m["item"]
+		eq.add_auto(Item.new("ammo_556", 40), true)
+		var stack = null
+		for e in eq.bags():
+			for it in e["bag"].items:
+				if it.id == "ammo_556" and stack == null:
+					stack = it
+					e["bag"].remove(it)
+		raid3.inv_ui.held = stack
+		raid3.inv_ui._held_pos = Vector2(60, 150)
+		raid3.inv_ui.refresh()
+		raid3.inv_ui._start_load_held(empty)
+	if _scene == "invfly" and _frames == 22:
+		var raid4: Node = root.get_child(root.get_child_count() - 1)
+		var box4 = raid4.boxes[0]
+		raid4.player.global_position = box4.global_position + Vector2(0, 20)
+		raid4.inv_ui.open_box(box4)
+		for it in box4.bag.items:
+			it.revealed = true
+		raid4.inv_ui.refresh()
+		raid4.inv_ui._take_all()
 	if _scene == "inv" and _frames == 22:
 		var raid: Node = root.get_child(root.get_child_count() - 1)
 		var box = raid.boxes[0]

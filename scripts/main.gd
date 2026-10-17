@@ -93,13 +93,15 @@ func _process(_delta: float) -> void:
 ## Zestaw do areny testowej (niezależny od zapisu gry).
 func _arena_kit() -> Equipment:
 	var eq := Equipment.new()
-	var rifle := Item.new("rifle_skm")
-	rifle.loaded = 30
-	eq.equip("primary", rifle)
+	eq.equip("primary", Item.make_weapon("rifle_skm"))
 	eq.equip("armor", Item.new("armor_3"))
 	eq.equip("head", Item.new("helmet_2"))
 	eq.equip("rig", Item.new("rig_a"))
-	eq.add_auto(Item.new("ammo_556", 120), true)
+	for i in 3:
+		var m := Item.new("mag_556_30")
+		m.loaded = 30
+		eq.add_auto(m, true)
+	eq.add_auto(Item.new("ammo_556", 60), true)
 	eq.add_auto(Item.new("bandage", 3), true)
 	eq.add_auto(Item.new("hemostatic", 1), true)
 	eq.add_auto(Item.new("splint", 1), true)

@@ -72,6 +72,8 @@ func gear_weight() -> float:
 		var it: Item = slots[slot]
 		if it:
 			s += it.def().get("weight", 0.0)
+			if it.mag:
+				s += it.mag.total_weight()
 	return s
 
 
@@ -121,6 +123,49 @@ func take(item_id: String, n: int) -> Array:
 			from_backpack = true
 		taken += t
 	return [taken, from_backpack]
+
+
+## Zapasowe magazynki danego typu w pojemnikach (bez bezpiecznego): [{item, bag, quick, slot}].
+func find_mags(mag_id: String) -> Array:
+	var out := []
+	for e in bags():
+		if e["slot"] == "secure":
+			continue
+		for it: Item in e["bag"].items:
+			if it.id == mag_id:
+				out.append({"item": it, "bag": e["bag"], "quick": e["quick"], "slot": e["slot"]})
+	return out
+
+
+## Przekłada jeden nabój z luźnej amunicji do pierwszego niepełnego magazynka
+## (poza włożonymi do broni). Zwraca ten magazynek albo null.
+func load_step() -> Item:
+	for e in bags():
+		if e["slot"] == "secure":
+			continue
+		for it: Item in e["bag"].items:
+			if it.is_mag() and it.loaded < it.mag_cap():
+				if take(it.ammo_item_id(), 1)[0] > 0:
+					it.loaded += 1
+					return it
+	return null
+
+
+## Natychmiast napełnia wszystkie magazynki i wkłada magazynek do pustej broni.
+func prepare_all() -> void:
+	while load_step() != null:
+		pass
+	for s in ["primary", "pistol"]:
+		var w: Item = slots[s]
+		if w == null or w.mag != null:
+			continue
+		var best := {}
+		for c in find_mags(w.def().get("mag_id", "")):
+			if best.is_empty() or c["item"].loaded > best["item"].loaded:
+				best = c
+		if not best.is_empty():
+			best["bag"].remove(best["item"])
+			w.mag = best["item"]
 
 
 ## Wszystko poza bezpiecznym kontenerem przepada (śmierć).

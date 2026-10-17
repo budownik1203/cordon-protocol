@@ -112,34 +112,29 @@ func _ready() -> void:
 
 func _training_kit() -> Equipment:
 	var eq := Equipment.new()
-	var rifle := Item.new("rifle_skm")
-	rifle.loaded = 30
-	eq.equip("primary", rifle)
-	var pistol := Item.new("pistol_p9")
-	pistol.loaded = 12
-	eq.equip("pistol", pistol)
+	eq.equip("primary", Item.make_weapon("rifle_skm"))
+	eq.equip("pistol", Item.make_weapon("pistol_p9"))
 	eq.equip("armor", Item.new("armor_3"))
 	eq.equip("head", Item.new("helmet_2"))
 	eq.equip("rig", Item.new("rig_a"))
 	eq.equip("backpack", Item.new("backpack_b"))
 	eq.equip("belt", Item.new("belt_a"))
-	eq.add_auto(Item.new("ammo_556", 90), true)
+	for i in 3:
+		var m := Item.new("mag_556_30")
+		m.loaded = 30
+		eq.add_auto(m, true)
+	var pm := Item.new("mag_9_12")
+	pm.loaded = 12
+	eq.add_auto(pm, true)
+	eq.add_auto(Item.new("ammo_556", 30), true)
 	eq.add_auto(Item.new("ammo_9", 24), true)
 	eq.add_auto(Item.new("bandage", 1), true)
 	return eq
 
 
-## Załaduj bronie z zapasu amunicji przed wyjściem (magazynki pełne na starcie).
+## Przed wyjściem ekipa pakuje magazynki i wkłada je do broni (w rajdzie robisz to sam: C, R).
 func _prefill_weapons() -> void:
-	for slot in ["primary", "pistol"]:
-		var w: Item = Game.equipment.get_slot(slot)
-		if w == null:
-			continue
-		var mag: int = w.def()["weapon"]["mag"]
-		var need := mag - w.loaded
-		if need > 0:
-			var got: int = Game.equipment.take("ammo_" + String(w.def()["ammo_type"]), need)[0]
-			w.loaded += got
+	Game.equipment.prepare_all()
 	player.equipment_changed()
 
 
