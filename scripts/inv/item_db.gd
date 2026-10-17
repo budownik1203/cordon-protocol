@@ -18,6 +18,19 @@ const DOCS := [
 	"Ogłoszenie: Kółko wzajemnej adoracji przy Przejściu spotyka się we wtorki. Prosimy nie przynosić świec.",
 ]
 
+const DOCS_LAB := [
+	"Protokół: pomieszczenie 3-C powtarza się co 40 metrów. Prosimy zgłaszać każdy napotkany egzemplarz pracownikom.",
+	"Notatka: Próbka nr 88 nie jest już próbką. Próbka nr 88 prosi, by tak jej nie nazywać.",
+	"Do: Zespół Badawczy. Temat: zgoda na eksperyment 'Otwarcie'. Zgoda udzielona z opóźnieniem. Skutki poprzedziły zgodę.",
+	"Wewnętrzne: windy zjeżdżają na poziomy, których nie ma w planach. Windy nie mają dokąd wrócić.",
+	"Dziennik dr K.: Rano był wtorek. Po południu był wtorek. Wieczorem kierownik pyta, czemu nie złożyłem raportu z poniedziałku.",
+	"Regulamin: w razie spotkania własnego sobowtóra prosimy nie podawać ręki. Podpisać protokół i się rozejść.",
+	"Biuro Zakupów: zamówiono 400 kg soli. Powód: 'na wszelki wypadek'. Sól zużyto w ciągu tygodnia.",
+	"Nagranie 12: słychać kroki z korytarza. Kamera pokazuje pusty korytarz. Kroki słychać też na nagraniu z poprzedniego dnia.",
+	"Zawiadomienie: personel zaginiony w strefie B uznaje się za obecny. Wypłaty będą realizowane zgodnie z grafikiem.",
+	"Karta pacjenta 0: wyniki w normie. Pacjent 0 nie był pacjentem. Pacjent 0 jest wymieniony w 14 raportach z przyszłości.",
+]
+
 
 static func _build() -> void:
 	if not _defs.is_empty():
@@ -40,15 +53,26 @@ static func _build() -> void:
 	_add("rifle_skm", {"name": "Karabin SKM-74", "w": 5, "h": 2, "weight": 3.6, "value": 900, "stack": 1,
 		"type": "weapon", "slot": "primary", "ammo_type": "556", "color": Color(0.35, 0.4, 0.35),
 		"weapon": {"name": "SKM-74", "damage": 32.0, "rpm": 600.0, "mag": 30, "reload": 2.4, "spread": 0.9,
-			"move_spread": 4.0, "recoil": 0.9, "recovery": 6.0, "range": 620.0, "noise": 320.0}})
+			"move_spread": 4.0, "recoil": 0.9, "recovery": 6.0, "range": 620.0, "noise": 320.0, "snd": "shot_rifle"}})
 	_add("smg_kr", {"name": "Pistolet maszynowy KR-9", "w": 3, "h": 2, "weight": 2.5, "value": 600, "stack": 1,
 		"type": "weapon", "slot": "primary", "ammo_type": "9", "color": Color(0.35, 0.38, 0.4),
 		"weapon": {"name": "KR-9", "damage": 19.0, "rpm": 800.0, "mag": 32, "reload": 2.0, "spread": 1.4,
-			"move_spread": 3.0, "recoil": 0.8, "recovery": 6.5, "range": 380.0, "noise": 240.0}})
+			"move_spread": 3.0, "recoil": 0.8, "recovery": 6.5, "range": 380.0, "noise": 240.0, "snd": "shot_smg"}})
 	_add("pistol_p9", {"name": "Pistolet P-9", "w": 2, "h": 1, "weight": 0.9, "value": 250, "stack": 1,
 		"type": "weapon", "slot": "pistol", "ammo_type": "9", "color": Color(0.3, 0.3, 0.35),
 		"weapon": {"name": "P-9", "damage": 22.0, "rpm": 330.0, "mag": 12, "reload": 1.6, "spread": 1.2,
-			"move_spread": 2.5, "recoil": 1.2, "recovery": 7.0, "range": 340.0, "noise": 200.0}})
+			"move_spread": 2.5, "recoil": 1.2, "recovery": 7.0, "range": 340.0, "noise": 200.0, "snd": "shot_pistol"}})
+	# Rzadsze rzeczy z głębszych biomów
+	_add("ammo_762", {"name": "Amunicja 7.62", "w": 1, "h": 1, "weight": 0.025, "value": 9, "stack": 40,
+		"type": "ammo", "ammo_type": "762", "pen": 4, "color": Color(0.85, 0.55, 0.25)})
+	_add("dmr_sw", {"name": "Karabin wyborowy SW-76", "w": 6, "h": 2, "weight": 4.4, "value": 2400, "stack": 1,
+		"type": "weapon", "slot": "primary", "ammo_type": "762", "color": Color(0.3, 0.33, 0.3),
+		"weapon": {"name": "SW-76", "damage": 55.0, "rpm": 190.0, "mag": 10, "reload": 3.0, "spread": 0.5,
+			"move_spread": 6.0, "recoil": 2.4, "recovery": 5.0, "range": 820.0, "noise": 380.0, "snd": "shot_dmr"}})
+	_add("helmet_4", {"name": "Hełm kl. 4", "w": 2, "h": 2, "weight": 1.9, "value": 2000, "stack": 1,
+		"type": "armor", "slot": "head", "armor_class": 4, "durability": 60.0, "color": Color(0.32, 0.45, 0.35)})
+	_add("armor_5", {"name": "Kamizelka kuloodporna kl. 5", "w": 3, "h": 3, "weight": 8.5, "value": 4200, "stack": 1,
+		"type": "armor", "slot": "armor", "armor_class": 5, "durability": 110.0, "color": Color(0.25, 0.3, 0.5)})
 	# Pancerz
 	_add("helmet_2", {"name": "Hełm kl. 2", "w": 2, "h": 2, "weight": 1.2, "value": 400, "stack": 1,
 		"type": "armor", "slot": "head", "armor_class": 2, "durability": 40.0, "color": Color(0.4, 0.45, 0.35)})
@@ -85,6 +109,7 @@ static func _build() -> void:
 	_add("lamp", {"name": "Latarka ręczna", "w": 1, "h": 2, "weight": 0.4, "value": 120, "stack": 1, "type": "loot", "color": Color(0.7, 0.7, 0.5)})
 	_add("sample", {"name": "Próbka (korporacyjna)", "w": 1, "h": 2, "weight": 0.3, "value": 600, "stack": 1, "type": "loot", "color": Color(0.5, 0.8, 0.7)})
 	_add("document", {"name": "Dokument", "w": 1, "h": 1, "weight": 0.02, "value": 50, "stack": 1, "type": "doc", "color": Color(0.9, 0.9, 0.8)})
+	_add("datacard", {"name": "Karta dostępu laboratorium", "w": 1, "h": 1, "weight": 0.02, "value": 450, "stack": 1, "type": "loot", "color": Color(0.3, 0.7, 0.9)})
 	_add("key_exit", {"name": "Klucz do bramy kordonu", "w": 1, "h": 1, "weight": 0.05, "value": 400, "stack": 1, "type": "key", "color": Color(0.9, 0.8, 0.2)})
 
 
@@ -103,5 +128,6 @@ static func all_ids() -> Array:
 	return _defs.keys()
 
 
-static func random_doc() -> String:
-	return DOCS[randi() % DOCS.size()]
+static func random_doc(biome: String = "przedmiescia") -> String:
+	var pool: Array = DOCS_LAB if biome == "kompleks" else DOCS
+	return pool[randi() % pool.size()]

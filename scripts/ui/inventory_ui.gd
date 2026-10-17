@@ -24,12 +24,8 @@ var _info: Label
 var _weight: Label
 var _msg: Label
 var _held_draw: Control
-var _trader_box: VBoxContainer
-var _money_label: Label
+var trader_panel: TraderPanel
 var _msg_t: float = 0.0
-var _stock := ["bandage", "hemostatic", "splint", "painkiller", "ammo_9", "ammo_556", "pistol_p9", "smg_kr",
-	"rifle_skm", "helmet_2", "helmet_3", "armor_3", "armor_4", "rig_a", "rig_b", "belt_a", "backpack_a",
-	"backpack_b", "lamp"]
 
 
 func setup(eq: Equipment, plr: Player, p_raid: bool) -> void:
@@ -99,76 +95,10 @@ func setup(eq: Equipment, plr: Player, p_raid: bool) -> void:
 
 
 func _build_trader() -> void:
-	var t := Label.new()
-	t.text = "HANDLARZ (kup: klik)"
-	t.position = Vector2(412, 4)
-	t.add_theme_font_size_override("font_size", 8)
-	_root.add_child(t)
-	_money_label = Label.new()
-	_money_label.position = Vector2(412, 16)
-	_money_label.add_theme_font_size_override("font_size", 8)
-	_money_label.add_theme_color_override("font_color", Color(0.9, 0.85, 0.4))
-	_root.add_child(_money_label)
-	var sc := ScrollContainer.new()
-	sc.position = Vector2(412, 28)
-	sc.size = Vector2(222, 270)
-	_root.add_child(sc)
-	_trader_box = VBoxContainer.new()
-	_trader_box.add_theme_constant_override("separation", 1)
-	sc.add_child(_trader_box)
-	for id in _stock:
-		var d := ItemDB.get_def(id)
-		var price := int(d["value"] * 1.25)
-		var b := Button.new()
-		b.text = "%s — %d" % [d["name"].substr(0, 34), price]
-		b.add_theme_font_size_override("font_size", 8)
-		b.custom_minimum_size = Vector2(205, 14)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.pressed.connect(_buy.bind(id, price))
-		b.mouse_entered.connect(func(): _show_info(Item.new(id)))
-		_trader_box.add_child(b)
-	var sell := Button.new()
-	sell.text = "SPRZEDAJ trzymany (55%)"
-	sell.position = Vector2(412, 304)
-	sell.size = Vector2(222, 22)
-	sell.add_theme_font_size_override("font_size", 8)
-	sell.pressed.connect(_sell_held)
-	_root.add_child(sell)
-
-
-func _buy(id: String, price: int) -> void:
-	if Game.money < price:
-		_flash("Za mało bonów.")
-		return
-	var qty := 1
-	var d := ItemDB.get_def(id)
-	if d.get("type", "") == "ammo":
-		qty = 30
-		price = int(d["value"] * 1.25) * 30
-		if Game.money < price:
-			_flash("Za mało bonów (30 szt.).")
-			return
-	var it := Item.new(id, qty)
-	if d.get("type", "") == "weapon":
-		it.loaded = 0
-	if not Game.stash.add_auto(it):
-		_flash("Skrytka pełna.")
-		return
-	Game.money -= price
-	_flash("Kupiono: %s" % it.item_name())
-	refresh()
-
-
-func _sell_held() -> void:
-	if held == null:
-		_flash("Weź przedmiot do ręki, potem kliknij Sprzedaj.")
-		return
-	var v := int(held.total_value() * 0.55)
-	Game.money += v
-	_flash("Sprzedano %s za %d bonów." % [held.item_name(), v])
-	held = null
-	held_src = null
-	refresh()
+	trader_panel = TraderPanel.new()
+	trader_panel.position = Vector2(410, 0)
+	_root.add_child(trader_panel)
+	trader_panel.setup(self)
 
 
 func open_player() -> void:
@@ -258,8 +188,8 @@ func refresh() -> void:
 	var w := equipment.total_weight()
 	_weight.text = "Waga: %.1f kg (%s)\nTempo: %d%%" % [w, Equipment.LOAD_NAMES[equipment.load_level()],
 		int(equipment.speed_mult() * 100)]
-	if _money_label:
-		_money_label.text = "Bony: %d" % Game.money
+	if trader_panel:
+		trader_panel.refresh()
 	if other_bag != null and current_box != null:
 		other_title = current_box.display_name() + (" (przeszukiwanie...)" if current_box.has_hidden() else "")
 
@@ -304,7 +234,7 @@ func _show_info(it: Item) -> void:
 
 func _flash(m: String) -> void:
 	_msg.text = m
-	_msg_t = 3.0
+	_msg_t = 3.5
 
 
 func _process(delta: float) -> void:
@@ -389,6 +319,7 @@ func _drop(view: GridView, cell: Vector2i) -> void:
 	if bag.fits(held, tl.x, tl.y):
 		bag.place(held, tl.x, tl.y)
 		held = null
+		Audio.play("ui_click", -8.0)
 		_after_change()
 		return
 	var target := bag.item_at(cell.x, cell.y)

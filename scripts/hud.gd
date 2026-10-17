@@ -28,7 +28,8 @@ func _process(_delta: float) -> void:
 		lines.append("Używasz: %s" % _player.using_item)
 	if raid:
 		var t: float = raid.elapsed
-		lines.append("Czas %02d:%02d   Zagrożenie %d" % [int(t) / 60, int(t) % 60, int(raid.threat)])
+		lines.append("%s   Czas %02d:%02d   Zagrożenie %d" % [raid.bdef.get("short", ""), int(t) / 60, int(t) % 60, int(raid.threat)])
+		lines.append("[M] mapa  [Tab] ekwipunek  [E] przeszukaj")
 	if not _player.is_alive():
 		lines.append("")
 		lines.append("NIE ŻYJESZ: %s" % _player.body.cause_of_death)

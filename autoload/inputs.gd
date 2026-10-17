@@ -18,6 +18,7 @@ func _ready() -> void:
 	_key("use_splint", KEY_3)
 	_key("use_painkiller", KEY_4)
 	_key("restart", KEY_ENTER)
+	_key("map", KEY_M)
 	_mouse("fire", MOUSE_BUTTON_LEFT)
 
 

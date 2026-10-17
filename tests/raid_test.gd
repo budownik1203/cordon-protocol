@@ -37,7 +37,7 @@ func _process(_delta: float) -> bool:
 		return false
 	if _raid == null:
 		return false
-	var player: Player = _raid.player
+	var player = _raid.player
 	if _frames == 6:
 		print("enemies=", _raid.enemies.size(), " boxes=", _raid.boxes.size(), " exits=", _raid.exits.size())
 		if _raid.boxes.is_empty() or _raid.exits.size() < 2:
@@ -46,13 +46,13 @@ func _process(_delta: float) -> bool:
 		# poczekaj na wygenerowane światło i sprawdź, że widoczność działa
 		print("sees own pos: ", player.can_see_point(player.global_position + Vector2(20, 0)))
 	if _frames == 202:
-		var box: LootBox = _raid.boxes[0]
+		var box = _raid.boxes[0]
 		player.global_position = box.global_position + Vector2(0, 20)
 		player.body.blood = 100.0
 		_raid.inv_ui.open_box(box)
 		print("opened box ", box.display_name(), " items=", box.bag.items.size())
 	if _frames == 202 + 60 * 5:
-		var box2: LootBox = _raid.boxes[0]
+		var box2 = _raid.boxes[0]
 		var hidden := 0
 		for it in box2.bag.items:
 			if not it.revealed:

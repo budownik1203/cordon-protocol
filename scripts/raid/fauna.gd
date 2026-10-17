@@ -17,6 +17,8 @@ var _target: Vector2 = Vector2.ZERO
 var _hunting: bool = false
 var _flash: float = 0.0
 var _wander_t: float = 0.0
+var _anim_t: float = 0.0
+var _screeched: bool = false
 
 
 func setup(p_nav: GridNav, p_player: Player) -> void:
@@ -41,20 +43,30 @@ func _on_noise(pos: Vector2, radius: float, source: Node) -> void:
 	if not alive or source == self:
 		return
 	if global_position.distance_to(pos) <= radius * 1.2:
-		_hunting = true
+		_start_hunt()
 		_target = pos
 		_repath = 0.0
 
 
-func take_hit(dmg: float, _dir: Vector2, _pen: int = 2) -> void:
+func _start_hunt() -> void:
+	_hunting = true
+	if not _screeched:
+		_screeched = true
+		Audio.play_at("fauna_screech", global_position, -2.0, randf_range(0.85, 1.15), 650.0)
+
+
+func take_hit(dmg: float, dir: Vector2, _pen: int = 2) -> void:
 	if not alive:
 		return
 	hp -= dmg
 	_flash = 0.1
-	_hunting = true
+	_start_hunt()
+	FxLayer.spawn(self, global_position, "goo", dir, 8)
+	Audio.play_at("hit_flesh", global_position, -4.0, 0.8, 500.0)
 	if hp <= 0.0:
 		alive = false
 		collision_layer = 0
+		Audio.play_at("fauna_die", global_position, -2.0, 1.0, 600.0)
 		died_signal.emit()
 	queue_redraw()
 
@@ -65,7 +77,7 @@ func _physics_process(delta: float) -> void:
 	_flash = maxf(0.0, _flash - delta)
 	_bite_cd = maxf(0.0, _bite_cd - delta)
 	if player and player.is_alive() and _can_smell():
-		_hunting = true
+		_start_hunt()
 		_target = player.global_position
 	if _hunting:
 		_repath -= delta
@@ -87,8 +99,10 @@ func _physics_process(delta: float) -> void:
 				move_and_slide()
 	if player and player.is_alive() and global_position.distance_to(player.global_position) < 16.0 and _bite_cd <= 0.0:
 		_bite_cd = 0.9
+		Audio.play_at("bite", global_position, 0.0, 1.0, 500.0)
 		player.take_hit(bite_damage, (player.global_position - global_position).normalized(), 1, "fauna")
 	queue_redraw()
+	_anim_t += delta * velocity.length() / 14.0
 	visible = player == null or player.can_see_point(global_position) or not alive
 
 
@@ -98,12 +112,18 @@ func _can_smell() -> bool:
 
 
 func _draw() -> void:
-	var col := Color(0.55, 0.2, 0.55)
-	if _flash > 0.0:
-		col = Color(1, 1, 1)
 	if not alive:
-		col = Color(0.25, 0.15, 0.25)
-	draw_circle(Vector2.ZERO, 6.0, col)
-	if alive:
-		draw_circle(Vector2(3, -2), 1.0, Color(1, 0.3, 0.3))
-		draw_circle(Vector2(3, 2), 1.0, Color(1, 0.3, 0.3))
+		return
+	var tex: Texture2D = Assets.tex("fauna")
+	if tex == null:
+		draw_circle(Vector2.ZERO, 6.0, Color(1, 1, 1) if _flash > 0.0 else Color(0.55, 0.2, 0.55))
+		return
+	var dir := velocity if velocity.length() > 5.0 else (player.global_position - global_position if player else Vector2.RIGHT)
+	var frame := 0
+	if velocity.length() > 5.0:
+		frame = 1 + int(_anim_t) % 2
+	draw_set_transform(Vector2.ZERO, dir.angle(), Vector2.ONE)
+	draw_texture_rect_region(tex, Rect2(-8, -8, 16, 16), Rect2(frame * 16, 0, 16, 16))
+	if _flash > 0.0:
+		draw_circle(Vector2.ZERO, 7.0, Color(1, 1, 1, 0.55))
+	draw_set_transform_matrix(Transform2D.IDENTITY)

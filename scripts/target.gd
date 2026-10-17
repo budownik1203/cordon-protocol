@@ -6,6 +6,7 @@ var max_hp := 100.0
 var hp := 100.0
 var _flash := 0.0
 var _respawn := 0.0
+var killed_once := false
 
 
 func _ready() -> void:
@@ -23,8 +24,11 @@ func take_hit(damage: float, _dir: Vector2, _penetration: int = 2) -> void:
 		return
 	hp -= damage
 	_flash = 0.12
+	Audio.play_at("hit_flesh", global_position, -6.0, 1.3, 500.0)
+	FxLayer.spawn(self, global_position, "spark", _dir, 5)
 	if hp <= 0.0:
 		_respawn = 3.0
+		killed_once = true
 	queue_redraw()
 
 

@@ -142,6 +142,19 @@ func take(item_id: String, n: int) -> int:
 	return taken
 
 
+## Kopia pustej siatki o tym samym układzie z zawartością (do próbnego sprawdzania, czy coś się zmieści).
+static func from_dict_bag(src: Bag) -> Bag:
+	var layout := []
+	for y in src.h:
+		var s := ""
+		for x in src.w:
+			s += "X" if src.mask[y][x] else "."
+		layout.append(s)
+	var b := Bag.new(layout, src.reduction)
+	b.from_array(src.to_array())
+	return b
+
+
 func to_array() -> Array:
 	var a := []
 	for it in items:

@@ -12,6 +12,7 @@ var loaded: int = 0  # naboje w magazynku (broń)
 var text: String = ""  # treść dokumentu
 var bag: Bag = null  # dla pojemników
 var revealed: bool = true  # przeszukiwanie odsłania stopniowo
+var insured: bool = false  # ubezpieczony: po śmierci wraca pocztą (z ryzykiem)
 
 
 func _init(p_id: String = "", p_count: int = 1) -> void:
@@ -81,7 +82,7 @@ func color() -> Color:
 
 
 func to_dict() -> Dictionary:
-	var d := {"id": id, "n": count, "r": rotated, "x": x, "y": y, "d": durability, "l": loaded, "t": text}
+	var d := {"id": id, "n": count, "r": rotated, "x": x, "y": y, "d": durability, "l": loaded, "t": text, "i": insured}
 	if bag:
 		d["bag"] = bag.to_array()
 	return d
@@ -95,6 +96,7 @@ static func from_dict(d: Dictionary) -> Item:
 	it.durability = float(d.get("d", -1.0))
 	it.loaded = int(d.get("l", 0))
 	it.text = d.get("t", it.text)
+	it.insured = d.get("i", false)
 	if it.bag and d.has("bag"):
 		it.bag.from_array(d["bag"])
 	return it

@@ -38,6 +38,9 @@ var _recoil_deg: float = 0.0
 var _aim_dir: Vector2 = Vector2.RIGHT
 var _fx: Node2D
 var _sprint_noise_t: float = 0.0
+var _anim_t: float = 0.0
+var _step_dist: float = 0.0
+var _heart_t: float = 0.0
 
 ## Zgodność z testami: liczba naboi w magazynku aktualnej broni.
 var ammo: int:
@@ -96,6 +99,7 @@ func _select_weapon(slot: String) -> void:
 	weapon.recoil_recovery_deg = wd.get("recovery", 6.0)
 	weapon.max_range = wd.get("range", 500.0)
 	weapon.noise_radius = wd.get("noise", 300.0)
+	weapon.sound = wd.get("snd", "shot_rifle")
 	var ammo_id := _ammo_id()
 	weapon.penetration = ItemDB.get_def(ammo_id).get("pen", 2)
 	ammo_changed.emit(ammo, weapon.magazine_size, false)
@@ -167,7 +171,12 @@ func take_hit(damage: float, _dir: Vector2, penetration: int = 2, source: String
 	if not body.alive:
 		return
 	last_hit_source = source
+	var was_alive := body.alive
 	body.apply_hit(body.pick_part(), damage, penetration)
+	Audio.play("hurt", -3.0)
+	FxLayer.spawn(self, global_position, "blood", _dir, 8)
+	if was_alive and not body.alive:
+		Audio.play("die_player", 0.0, 1.0, 0.0)
 	if using_item != "":
 		using_item = ""
 
@@ -201,6 +210,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, FRICTION * delta)
 	move_and_slide()
+	_update_audio_and_anim(delta, input)
 
 	_recoil_deg = maxf(0.0, _recoil_deg - (weapon.recoil_recovery_deg if weapon else 6.0) * delta)
 	_cooldown = maxf(0.0, _cooldown - delta)
@@ -227,10 +237,32 @@ func _physics_process(delta: float) -> void:
 			_fire()
 
 
+func _update_audio_and_anim(delta: float, input: Vector2) -> void:
+	var spd := velocity.length()
+	if spd > 5.0:
+		_anim_t += delta * (spd / 18.0)
+		_step_dist += spd * delta
+		var stride := 17.0 if sprinting else 24.0
+		if _step_dist >= stride and not crouching:
+			_step_dist = 0.0
+			Audio.step(-4.0 if sprinting else -9.0)
+			if spd > 60.0 and not sprinting:
+				Events.emit_noise(global_position, 48.0, self)
+		elif crouching:
+			_step_dist = 0.0
+	if body.pain > 0.45 or body.blood < 55.0:
+		_heart_t -= delta
+		if _heart_t <= 0.0:
+			_heart_t = 1.1 if body.blood > 35.0 else 0.75
+			Audio.play("heartbeat", -8.0 + 6.0 * clampf(1.0 - body.blood / 100.0, 0.0, 1.0), 1.0, 0.0)
+	queue_redraw()
+
+
 func _swap_weapon() -> void:
 	var other := "pistol" if weapon_slot == "primary" else "primary"
 	if equipment.get_slot(other):
 		_select_weapon(other)
+		Audio.play("swap_weapon", -4.0)
 
 
 func _handle_healing(delta: float) -> void:
@@ -275,6 +307,7 @@ func _start_reload() -> void:
 	if not has_quick:
 		t += 1.2  # amunicja w plecaku
 	_reload_left = t
+	Audio.play("reload_start", -4.0)
 	ammo_changed.emit(ammo, weapon.magazine_size, true)
 
 
@@ -284,6 +317,7 @@ func _finish_reload() -> void:
 	var need := weapon.magazine_size - weapon_item.loaded
 	var got: int = equipment.take(_ammo_id(), need)[0]
 	weapon_item.loaded += got
+	Audio.play("reload_end", -3.0)
 	ammo_changed.emit(ammo, weapon.magazine_size, false)
 
 
@@ -291,6 +325,8 @@ func _fire() -> void:
 	if weapon_item.loaded <= 0:
 		if reserve_ammo() > 0:
 			_start_reload()
+		else:
+			Audio.play("empty_click", -4.0)
 		_cooldown = 0.25
 		return
 	weapon_item.loaded -= 1
@@ -300,6 +336,7 @@ func _fire() -> void:
 	_recoil_deg += weapon.recoil_per_shot_deg
 	ammo_changed.emit(ammo, weapon.magazine_size, false)
 	Events.emit_noise(global_position, weapon.noise_radius, self)
+	Audio.play(weapon.sound, -4.0, 1.0, 0.05)
 
 	var from := global_position + _aim_dir * MUZZLE_OFFSET
 	var to := from + dir * weapon.max_range
@@ -311,11 +348,29 @@ func _fire() -> void:
 		var collider: Object = hit.collider
 		if collider and collider.has_method("take_hit"):
 			collider.take_hit(weapon.damage, dir, weapon.penetration)
+			Audio.play("hit_confirm", -6.0, 1.0, 0.03)
+		else:
+			FxLayer.spawn(self, hit.position, "dust", -dir, 4)
+			Audio.play_at("hit_wall", hit.position, -8.0, 1.0, 400.0)
+	FxLayer.spawn(self, from, "muzzle", dir, 3)
 	if _fx and _fx.has_method("add_trace"):
 		_fx.add_trace(from, end)
 
 
 func _draw() -> void:
-	var col := Color(0.35, 0.6, 0.85) if body == null or body.alive else Color(0.3, 0.3, 0.3)
-	draw_circle(Vector2.ZERO, 6.0, col)
-	draw_line(Vector2.ZERO, Vector2(12, 0), Color(0.9, 0.9, 0.9), 2.0)
+	var alive_now := body == null or body.alive
+	var tex: Texture2D = Assets.tex("player" if alive_now else "corpse_player")
+	if tex == null:
+		draw_circle(Vector2.ZERO, 6.0, Color(0.35, 0.6, 0.85) if alive_now else Color(0.3, 0.3, 0.3))
+		draw_line(Vector2.ZERO, Vector2(12, 0), Color(0.9, 0.9, 0.9), 2.0)
+		return
+	if not alive_now:
+		draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
+		draw_texture_rect_region(tex, Rect2(-8, -8, 16, 16), Rect2(0, 0, 16, 16))
+		return
+	var frame := 0
+	if velocity.length() > 5.0:
+		frame = 1 + int(_anim_t) % 2
+	if crouching:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(0.9, 0.9))
+	draw_texture_rect_region(tex, Rect2(-8, -8, 16, 16), Rect2(frame * 16, 0, 16, 16))

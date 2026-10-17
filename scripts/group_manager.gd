@@ -16,6 +16,8 @@ func add_member(e) -> void:
 
 func report(source, pos: Vector2) -> void:
 	_pending.append([RADIO_DELAY, pos, source])
+	if is_instance_valid(source):
+		Audio.play_at("radio_" + String(source.VOICE.get(source.faction, "b")), source.global_position, -6.0, 1.0, 420.0)
 
 
 func _process(delta: float) -> void:

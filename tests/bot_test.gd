@@ -47,7 +47,7 @@ func _process(_delta: float) -> bool:
 		print("BOT TEST OK")
 		quit(0)
 		return true
-	var p: Player = _raid.player
+	var p = _raid.player
 	if p == null or not p.is_alive():
 		return false
 	_dir_t -= 1

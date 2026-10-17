@@ -18,9 +18,9 @@ func _process(_delta: float) -> bool:
 	_frames += 1
 	if _frames == 2:
 		for c in _main.get_children():
-			if c is Enemy:
+			if c.has_method("receive_radio"):
 				_enemies.append(c)
-		var p: Player = _main.player
+		var p = _main.player
 		p.global_position = Vector2(14 * 32 + 16, 5 * 32 + 16)  # w prawym pokoju, w zasięgu wzroku
 		p.weapon.noise_radius = 400.0
 		root.get_node("Events").emit_noise(p.global_position, 400.0, p)
@@ -29,7 +29,7 @@ func _process(_delta: float) -> bool:
 			var k: String = e.state_name() + ("+" + e.role if e.role != "" else "")
 			_visited[k] = true
 	if _frames == 60 * 25:
-		var p: Player = _main.player
+		var p = _main.player
 		var any_cover := _visited.has("to_cover+suppress") or _visited.has("in_cover+suppress") or _visited.has("peek+suppress")
 		var any_flank := false
 		for k in _visited:

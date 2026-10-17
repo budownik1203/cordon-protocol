@@ -19,6 +19,8 @@ extends Resource
 @export_range(1, 6) var penetration: int = 3
 ## Promień hałasu strzału w pikselach (wrogowie reagują).
 @export var noise_radius: float = 300.0
+## Nazwa pliku dźwięku strzału (audio/<nazwa>.wav).
+@export var sound: String = "shot_rifle"
 
 
 func seconds_per_shot() -> float:

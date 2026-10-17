@@ -57,6 +57,12 @@ var trait_name: String = "ostrożny"
 var weak_threshold: float = 0.4
 var wait_mult: float = 1.0
 var base_color: Color = Color(0.8, 0.3, 0.25)
+var elite: bool = false
+var _anim_t: float = 0.0
+
+const SPRITES := {"Szabrownicy": "szab", "Najemnicy": "najem", "Wojskowi": "wojsk"}
+const VOICE := {"Szabrownicy": "a", "Najemnicy": "b", "Wojskowi": "c"}
+static var _last_alert_ms: int = -100000
 
 
 func setup(p_nav: GridNav, p_player: Player, fx: Node2D) -> void:
@@ -94,6 +100,18 @@ func configure(f: String) -> void:
 	body.vest = ArmorData.make("Kamizelka", cfg["vest"], 50.0) if cfg["vest"] > 0 else null
 	body.helmet = ArmorData.make("Hełm", cfg["helmet"], 40.0) if cfg["helmet"] > 0 and randf() < 0.6 else null
 	trait_name = TRAITS[randi() % TRAITS.size()]
+	if elite:
+		damage = 30.0
+		penetration = 3
+		rpm = 500.0
+		base_spread_deg = 1.8
+		move_speed = 70.0
+		reaction_time = 0.3
+		fire_range = 290.0
+		body.vest = ArmorData.make("Kamizelka kl. 5", 5, 120.0)
+		body.helmet = ArmorData.make("Hełm kl. 4", 4, 60.0)
+		if trait_name == "tchórzliwy":
+			trait_name = "ostrożny"
 	match trait_name:
 		"ostrożny":
 			wait_mult = 1.5
@@ -115,11 +133,21 @@ func state_name() -> String:
 func take_hit(dmg: float, dir: Vector2, pen: int = 2) -> void:
 	if not body.alive:
 		return
-	body.apply_hit(body.pick_part(), dmg, pen)
+	var was_alive := body.alive
+	var part := body.pick_part()
+	var dealt := body.apply_hit(part, dmg, pen)
 	_flash = 0.12
+	if dealt < dmg * 0.85 and body.vest != null and part in [Body.Part.CHEST, Body.Part.ABDOMEN, Body.Part.HEAD]:
+		Audio.play_at("hit_armor", global_position, -4.0, 1.0, 500.0)
+		FxLayer.spawn(self, global_position, "spark", dir, 6)
+	else:
+		Audio.play_at("hit_flesh", global_position, -4.0, 1.0, 500.0)
+		FxLayer.spawn(self, global_position, "blood", dir, 8)
 	# wróg trafiony wie, skąd strzelano
 	if player and body.alive:
 		_alert(player.global_position, true)
+	if was_alive and not body.alive:
+		Audio.play_at("die_enemy", global_position, -2.0, 1.0, 600.0)
 	if not body.alive:
 		_path = PackedVector2Array()
 		velocity = Vector2.ZERO
@@ -143,6 +171,11 @@ func _on_noise(pos: Vector2, radius: float, source: Node) -> void:
 func _alert(pos: Vector2, share: bool) -> void:
 	if not has_target:
 		_seen_time = 0.0
+		Audio.play_at("bark_" + VOICE.get(faction, "b"), global_position, -2.0, 1.0, 650.0)
+		var now := Time.get_ticks_msec()
+		if now - _last_alert_ms > 7000:
+			_last_alert_ms = now
+			Audio.play("alert", -8.0, 1.0, 0.0)
 	has_target = true
 	_memory = memory_time
 	last_known = pos
@@ -378,6 +411,8 @@ func _shoot() -> void:
 		if c and c.has_method("take_hit"):
 			c.take_hit(damage, dir, penetration, faction)
 	Events.emit_noise(global_position, 260.0, self)
+	Audio.play_at("shot_enemy_" + VOICE.get(faction, "b"), global_position, -1.0, 1.0, 800.0)
+	FxLayer.spawn(self, from, "muzzle", dir, 3)
 	if _fx and _fx.has_method("add_trace"):
 		_fx.add_trace(from, end, Color(1.0, 0.45, 0.35))
 
@@ -387,13 +422,22 @@ func pain_factor() -> float:
 
 
 func _draw() -> void:
-	var col := base_color
-	if _flash > 0.0:
-		col = Color(1, 1, 1)
 	if body and not body.alive:
-		col = Color(0.3, 0.25, 0.25)
-	draw_circle(Vector2.ZERO, 6.0, col)
-	if body and body.alive:
+		return
+	var sprite: String = "elita" if elite else SPRITES.get(faction, "najem")
+	var tex: Texture2D = Assets.tex(sprite)
+	if tex == null:
+		draw_circle(Vector2.ZERO, 6.0, base_color)
 		draw_line(Vector2.ZERO, facing * 12.0, Color(0.95, 0.95, 0.95), 2.0)
-		if has_target:
-			draw_circle(Vector2(0, -11), 2.0, Color(1.0, 0.8, 0.2) if sees_player else Color(0.9, 0.5, 0.1))
+	else:
+		var frame := 0
+		if velocity.length() > 5.0:
+			frame = 1 + int(_anim_t) % 2
+		var k := 1.2 if elite else 1.0
+		draw_set_transform(Vector2.ZERO, facing.angle(), Vector2(k, k))
+		draw_texture_rect_region(tex, Rect2(-8, -8, 16, 16), Rect2(frame * 16, 0, 16, 16))
+		if _flash > 0.0:
+			draw_circle(Vector2.ZERO, 7.0, Color(1, 1, 1, 0.55))
+		draw_set_transform_matrix(Transform2D.IDENTITY)
+	if body and body.alive and has_target:
+		draw_circle(Vector2(0, -11), 2.0, Color(1.0, 0.8, 0.2) if sees_player else Color(0.9, 0.5, 0.1))

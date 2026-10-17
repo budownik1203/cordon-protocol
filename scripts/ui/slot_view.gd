@@ -38,3 +38,6 @@ func _draw() -> void:
 		draw_rect(r, c.darkened(0.25))
 		draw_rect(r, c.lightened(0.2), false, 1.0)
 		draw_string(font, r.position + Vector2(2, 9), it.item_name().substr(0, 13), HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1, 1, 1))
+		if it.insured:
+			draw_rect(Rect2(r.position.x + r.size.x - 7, r.position.y, 7, 8), Color(0.2, 0.55, 0.9))
+			draw_string(font, r.position + Vector2(r.size.x - 6, 7), "U", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1, 1, 1))

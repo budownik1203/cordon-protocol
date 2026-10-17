@@ -11,6 +11,7 @@ config/features=PackedStringArray("4.4", "GL Compatibility")
 
 Inputs="*res://autoload/inputs.gd"
 Events="*res://autoload/events.gd"
+Audio="*res://autoload/audio.gd"
 Game="*res://autoload/game.gd"
 
 [display]
@@ -33,3 +34,4 @@ window/stretch/aspect="keep"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=0
+environment/defaults/default_clear_color=Color(0.02, 0.02, 0.03, 1)
