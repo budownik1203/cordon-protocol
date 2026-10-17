@@ -22,6 +22,8 @@ var _extract_t: float = 0.0
 var _ended: bool = false
 var _cam_pos := Vector3.ZERO
 var _banner: Label
+var fps: bool = false
+var crosshair: Control
 
 
 func _ready() -> void:
@@ -64,18 +66,26 @@ func _build_world() -> void:
 	add_child(we)
 	# gracz
 	player = Player3D.new()
+	player.fps = fps
 	add_child(player)
 	var sp: Vector2 = level["start"]
 	player.global_position = Vector3(sp.x / 32.0, 0, sp.y / 32.0)
 	cam = Camera3D.new()
-	cam.fov = 38.0
-	cam.near = 1.0
 	cam.far = 120.0
-	add_child(cam)
-	player.cam = cam
-	_cam_pos = player.global_position + CAM_OFFSET
-	cam.global_position = _cam_pos
-	cam.look_at(player.global_position, Vector3.UP)
+	if fps:
+		cam.fov = 78.0
+		cam.near = 0.05
+		player.cam = cam
+		player.setup_fps_camera(cam)
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	else:
+		cam.fov = 38.0
+		cam.near = 1.0
+		add_child(cam)
+		player.cam = cam
+		_cam_pos = player.global_position + CAM_OFFSET
+		cam.global_position = _cam_pos
+		cam.look_at(player.global_position, Vector3.UP)
 	player.shot.connect(_on_player_shot)
 	player.died.connect(_on_player_died)
 	# strefy ewakuacji
@@ -190,6 +200,19 @@ func _build_hud() -> void:
 	hud_help.add_theme_font_size_override("font_size", 7)
 	hud_help.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8, 0.7))
 	hud_help.text = "PRÓBA 3D  |  WASD ruch  mysz celowanie  LPM strzał  R przeładuj  Shift sprint  C kuc  E skrzynia  Esc baza"
+	if fps:
+		hud_help.text = "PRÓBA FPS  |  WASD ruch  mysz rozglądanie  LPM strzał  PPM przycelowanie  R przeładuj  Shift sprint  C kuc  E skrzynia  Esc baza"
+		crosshair = Control.new()
+		crosshair.size = Vector2(640, 360)
+		crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		crosshair.draw.connect(func():
+			var c := Vector2(320, 180)
+			var spread := player.crosshair_spread() * 60.0
+			var col := Color(1, 1, 1, 0.85)
+			for dir in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+				crosshair.draw_line(c + dir * (2.0 + spread), c + dir * (5.0 + spread), col, 1.0)
+			crosshair.draw_circle(c, 0.6, col))
+		root.add_child(crosshair)
 	root.add_child(hud_help)
 	_banner = Label.new()
 	_banner.position = Vector2(0, 140)
@@ -220,8 +243,13 @@ func _process(delta: float) -> void:
 		_msg_t -= delta
 		if _msg_t <= 0.0:
 			hud_msg.text = ""
+	if crosshair:
+		crosshair.queue_redraw()
 	hud_ammo.text = "%d | %d%s" % [player.ammo, player.reserve, " ..." if player.reloading else ""]
 	hud_ammo.add_theme_color_override("font_color", Color(1, 0.4, 0.35) if player.ammo == 0 else Color(1, 0.95, 0.7))
+	if fps:
+		_process_common(delta)
+		return
 	# kamera podąża miękko, z lekkim kołysaniem
 	var target := player.global_position + CAM_OFFSET
 	var spd := Vector2(player.velocity.x, player.velocity.z).length()
@@ -229,6 +257,10 @@ func _process(delta: float) -> void:
 	var bob := Vector3(0, absf(sin(Time.get_ticks_msec() / 1000.0 * 5.5)) * 0.04 * spd / 3.0, 0)
 	cam.global_position = _cam_pos + bob
 	cam.look_at(_cam_pos - CAM_OFFSET + Vector3(0, 0.6, 0), Vector3.UP)
+	_process_common(delta)
+
+
+func _process_common(delta: float) -> void:
 	# skrzynie: E otwiera najbliższą
 	if Input.is_key_pressed(KEY_E) and not _ended:
 		_try_open_crate()
@@ -274,6 +306,9 @@ func _try_open_crate() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.physical_keycode == KEY_ESCAPE:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			get_tree().change_scene_to_file("res://scenes/base.tscn")
 		elif event.physical_keycode == KEY_ENTER and _ended:
 			get_tree().reload_current_scene()
+	if fps and event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

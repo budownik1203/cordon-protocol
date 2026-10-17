@@ -213,10 +213,20 @@ func _shoot() -> void:
 	Audio.play("shot_enemy_a" if faction == "szabrownicy" else ("shot_enemy_b" if faction == "najemnicy" else "shot_enemy_c"), -9.0, 1.0, 0.05)
 
 
-func take_hit(damage: float, dir: Vector3, pen: int = 2) -> void:
+func take_hit(damage: float, dir: Vector3, pen: int = 2, hit_y: float = -1.0) -> void:
 	if _dead:
 		return
 	var part := body.pick_part()
+	if hit_y >= 0.0:
+		# w widoku FPS wysokość trafienia decyduje o części ciała
+		if hit_y > 1.5:
+			part = Body.Part.HEAD
+		elif hit_y > 1.05:
+			part = Body.Part.CHEST if randf() < 0.75 else (Body.Part.L_ARM if randf() < 0.5 else Body.Part.R_ARM)
+		elif hit_y > 0.8:
+			part = Body.Part.STOMACH
+		else:
+			part = Body.Part.L_LEG if randf() < 0.5 else Body.Part.R_LEG
 	body.apply_hit(part, damage, pen)
 	Fx3D.burst(get_parent(), global_position + Vector3(0, 1.2, 0), -dir, Color(0.65, 0.05, 0.05), 8, 3.0)
 	Audio.play("hit_flesh", -6.0, 1.0, 0.05)
