@@ -151,19 +151,38 @@ func _start_raid() -> void:
 
 # --- kontrakt na początek ----------------------------------------------------
 
+## Łamie długie wiersze na słowach (Label w CanvasLayer nie zawsze zawija sam).
+static func wrap_text(lines: Array, width_chars: int) -> String:
+	var out := []
+	for line in lines:
+		var text: String = line
+		if text.length() <= width_chars:
+			out.append(text)
+			continue
+		var cur := ""
+		for word in text.split(" "):
+			if cur.length() + word.length() + 1 > width_chars and cur != "":
+				out.append(cur)
+				cur = word
+			else:
+				cur = word if cur == "" else cur + " " + word
+		out.append(cur)
+	return "\n".join(out)
+
+
 func _show_contract() -> void:
 	_contract_layer = CanvasLayer.new()
 	_contract_layer.layer = 40
 	add_child(_contract_layer)
 	var bg := ColorRect.new()
 	bg.size = Vector2(640, 360)
-	bg.color = Color(0.03, 0.04, 0.05, 0.98)
+	bg.color = Color(0.03, 0.04, 0.05, 1.0)
 	_contract_layer.add_child(bg)
 	var l := Label.new()
-	l.text = "\n".join(Dialogue.CONTRACT)
+	l.text = wrap_text(Dialogue.CONTRACT, 104)
 	l.position = Vector2(50, 28)
+	l.custom_minimum_size = Vector2(540, 250)
 	l.size = Vector2(540, 250)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.add_theme_font_size_override("font_size", 10)
 	_contract_layer.add_child(l)
 	var b1 := Button.new()
@@ -283,14 +302,15 @@ func _show_report(r: Dictionary) -> void:
 	add_child(_report_layer)
 	var bg := ColorRect.new()
 	bg.size = Vector2(640, 360)
-	bg.color = Color(0.03, 0.04, 0.05, 0.97)
+	bg.color = Color(0.03, 0.04, 0.05, 1.0)
 	_report_layer.add_child(bg)
 	var l := Label.new()
-	l.text = "\n".join(_report_lines(r))
-	l.position = Vector2(40, 24)
-	l.size = Vector2(560, 270)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", 10)
+	l.text = wrap_text(_report_lines(r), 118)
+	l.position = Vector2(30, 10)
+	l.custom_minimum_size = Vector2(560, 270)
+	l.size = Vector2(580, 296)
+	l.add_theme_font_size_override("font_size", 8)
+	l.add_theme_constant_override("line_spacing", -2)
 	_report_layer.add_child(l)
 	var b := Button.new()
 	b.text = "Wróć do bazy"

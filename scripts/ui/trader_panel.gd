@@ -37,19 +37,20 @@ func setup(p_ui: InventoryUI) -> void:
 	_name_l = _label(Vector2(0, 21), Vector2(W, 10), Color(0.95, 0.85, 0.45))
 	_speech = _label(Vector2(0, 32), Vector2(W, 38), Color(0.78, 0.82, 0.86))
 	_speech.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_speech.custom_minimum_size = Vector2(W, 38)
 	_money = _label(Vector2(0, 70), Vector2(W, 10), Color(0.9, 0.85, 0.4))
 	_scroll = ScrollContainer.new()
 	_scroll.position = Vector2(0, 82)
-	_scroll.size = Vector2(W, 212)
+	_scroll.size = Vector2(W, 200)
 	add_child(_scroll)
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 1)
 	_scroll.add_child(_list)
-	var sell := _button("SPRZEDAJ trzymany", Vector2(0, 298), Vector2(W, 18), _sell_held)
+	var sell := _button("SPRZEDAJ trzymany", Vector2(0, 286), Vector2(W, 22), _sell_held)
 	sell.tooltip_text = "Weź przedmiot LPM, potem kliknij. Każdy handlarz skupuje inne rzeczy."
-	_insure_btn = _button("UBEZPIECZ trzymany", Vector2(0, 318), Vector2(112, 18), _insure_held)
-	_quest_btn = _button("ZADANIE", Vector2(116, 318), Vector2(112, 18), _open_quest)
-	select("kw", false)
+	_insure_btn = _button("UBEZPIECZ trzymany", Vector2(0, 310), Vector2(112, 22), _insure_held)
+	_quest_btn = _button("ZADANIE", Vector2(116, 310), Vector2(112, 22), _open_quest)
+	select("kw", true)
 
 
 func _label(pos: Vector2, sz: Vector2, col: Color) -> Label:
@@ -283,7 +284,7 @@ func _open_quest() -> void:
 		return
 	_overlay = Control.new()
 	_overlay.position = Vector2(0, 82)
-	_overlay.size = Vector2(W, 232)
+	_overlay.size = Vector2(W, 200)
 	add_child(_overlay)
 	var bg := ColorRect.new()
 	bg.size = _overlay.size
@@ -296,11 +297,12 @@ func _open_quest() -> void:
 	var t := Label.new()
 	t.text = "%s\n\n%s" % [q["title"].to_upper(), text]
 	t.position = Vector2(4, 4)
-	t.size = Vector2(W - 8, 96)
+	t.custom_minimum_size = Vector2(W - 8, 90)
+	t.size = Vector2(W - 8, 90)
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	t.add_theme_font_size_override("font_size", 8)
 	_overlay.add_child(t)
-	var y := 104.0
+	var y := 94.0
 	if state == "":
 		say("quest_new")
 		_ov_button("Przyjmij zadanie", Vector2(4, y), Vector2(W - 8, 18), func():
@@ -313,12 +315,13 @@ func _open_quest() -> void:
 		var pl := Label.new()
 		pl.text = "Postęp: %d / %d   %s" % [pr[0], pr[1], _goal_text(q)]
 		pl.position = Vector2(4, y)
+		pl.custom_minimum_size = Vector2(W - 8, 20)
 		pl.size = Vector2(W - 8, 20)
 		pl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		pl.add_theme_font_size_override("font_size", 8)
 		pl.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6) if Game.quest_ready(q["id"]) else Color(0.9, 0.8, 0.5))
 		_overlay.add_child(pl)
-		y += 26.0
+		y += 24.0
 		if Game.quest_ready(q["id"]):
 			say("quest_done")
 			var lbl := Label.new()
@@ -329,12 +332,12 @@ func _open_quest() -> void:
 			y += 12.0
 			for i in 2:
 				var label: String = q["rewards"][i]["label"]
-				var b := _ov_button(label, Vector2(4, y), Vector2(W - 8, 30), func(): _claim(q["id"], i))
+				var b := _ov_button(label, Vector2(4, y), Vector2(W - 8, 28), func(): _claim(q["id"], i))
 				b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				y += 34.0
+				y += 30.0
 		else:
 			say("quest_active")
-	_ov_button("Zamknij", Vector2(4, 210), Vector2(W - 8, 18), _close_overlay)
+	_ov_button("Zamknij", Vector2(4, 184), Vector2(W - 8, 18), _close_overlay)
 
 
 func _goal_text(q: Dictionary) -> String:

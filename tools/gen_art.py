@@ -275,7 +275,7 @@ def make_tiles():
     save(im, "cover_a.png")
     # --- biom B: kompleks ---
     for i in range(4):
-        im = noise_tile(C("7a848d"), 4, rng, C("68727b"), 25)
+        im = noise_tile(C("5f6972"), 4, rng, C("525c65"), 25)
         d = ImageDraw.Draw(im)
         d.rectangle([0, 0, 31, 31], outline=C("5f6972"))
         d.line([(0, 15), (31, 15)], fill=C("6c767f")); d.line([(15, 0), (15, 31)], fill=C("6c767f"))
