@@ -125,6 +125,17 @@ func take(item_id: String, n: int) -> Array:
 	return [taken, from_backpack]
 
 
+## Pierwszy przedmiot o danym id w pojemnikach (bez bezpiecznego): {item, bag} albo {}.
+func find_item(item_id: String) -> Dictionary:
+	for e in bags():
+		if e["slot"] == "secure":
+			continue
+		for it: Item in e["bag"].items:
+			if it.id == item_id:
+				return {"item": it, "bag": e["bag"]}
+	return {}
+
+
 ## Zapasowe magazynki danego typu w pojemnikach (bez bezpiecznego): [{item, bag, quick, slot}].
 func find_mags(mag_id: String) -> Array:
 	var out := []

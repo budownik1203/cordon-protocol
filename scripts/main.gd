@@ -74,10 +74,8 @@ func _ready() -> void:
 	player.add_child(cam)
 
 	var layer := CanvasLayer.new()
-	var hud := Label.new()
+	var hud := Control.new()
 	hud.set_script(load("res://scripts/hud.gd"))
-	hud.position = Vector2(8, 6)
-	hud.add_theme_font_size_override("font_size", 10)
 	layer.add_child(hud)
 	add_child(layer)
 	hud.setup(player)

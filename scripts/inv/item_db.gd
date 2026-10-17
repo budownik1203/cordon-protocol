@@ -50,14 +50,18 @@ static func _build() -> void:
 	_add("mag_762_10", {"name": "Magazynek 7.62 (10)", "w": 1, "h": 2, "weight": 0.3, "value": 160, "stack": 1,
 		"type": "mag", "ammo_type": "762", "cap": 10, "color": Color(0.52, 0.45, 0.35)})
 	# Leczenie
-	_add("bandage", {"name": "Bandaż", "w": 1, "h": 1, "weight": 0.1, "value": 30, "stack": 4,
+	_add("bandage", {"name": "Bandaż (lekkie krwawienie)", "w": 1, "h": 1, "weight": 0.1, "value": 30, "stack": 4,
 		"type": "med", "heal": "bandage", "use_time": 3.0, "color": Color(0.85, 0.85, 0.85)})
-	_add("hemostatic", {"name": "Opatrunek hemostatyczny", "w": 1, "h": 1, "weight": 0.1, "value": 80, "stack": 2,
+	_add("hemostatic", {"name": "Opaska hemostatyczna (ciężkie krwawienie)", "w": 1, "h": 1, "weight": 0.1, "value": 80, "stack": 2,
 		"type": "med", "heal": "hemostatic", "use_time": 4.0, "color": Color(0.8, 0.25, 0.25)})
-	_add("splint", {"name": "Szyna", "w": 1, "h": 2, "weight": 0.3, "value": 60, "stack": 1,
+	_add("splint", {"name": "Szyna (złamanie)", "w": 1, "h": 2, "weight": 0.3, "value": 60, "stack": 1,
 		"type": "med", "heal": "splint", "use_time": 6.0, "color": Color(0.6, 0.5, 0.3)})
-	_add("painkiller", {"name": "Środek przeciwbólowy", "w": 1, "h": 1, "weight": 0.05, "value": 50, "stack": 4,
+	_add("painkiller", {"name": "Środek przeciwbólowy (całe ciało)", "w": 1, "h": 1, "weight": 0.05, "value": 50, "stack": 4,
 		"type": "med", "heal": "painkiller", "use_time": 2.0, "color": Color(0.3, 0.6, 0.85)})
+	_add("medkit", {"name": "Apteczka IFAK (leczy HP części)", "w": 2, "h": 1, "weight": 0.4, "value": 260, "stack": 1,
+		"type": "med", "heal": "medkit", "use_time": 4.0, "durability": 150.0, "color": Color(0.8, 0.3, 0.3)})
+	_add("surgery", {"name": "Zestaw chirurgiczny (naprawa zniszczonej kończyny)", "w": 2, "h": 2, "weight": 0.6, "value": 900, "stack": 1,
+		"type": "med", "heal": "surgery", "use_time": 14.0, "color": Color(0.3, 0.65, 0.65)})
 	# Bronie
 	_add("rifle_skm", {"name": "Karabin SKM-74", "w": 5, "h": 2, "weight": 3.6, "value": 900, "stack": 1,
 		"type": "weapon", "slot": "primary", "ammo_type": "556", "mag_id": "mag_556_30", "color": Color(0.35, 0.4, 0.35),

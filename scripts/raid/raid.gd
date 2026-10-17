@@ -16,7 +16,7 @@ var level: Dictionary
 var nav: GridNav
 var player: Player
 var fx: Node2D
-var hud: Label
+var hud: Control
 var inv_ui: InventoryUI
 var prompt: Label
 var hint_label: Label
@@ -352,10 +352,8 @@ func _circle_texture() -> Texture2D:
 func _setup_ui() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 5
-	hud = Label.new()
+	hud = Control.new()
 	hud.set_script(load("res://scripts/hud.gd"))
-	hud.position = Vector2(6, 4)
-	hud.add_theme_font_size_override("font_size", 8)
 	layer.add_child(hud)
 	prompt = Label.new()
 	prompt.position = Vector2(180, 330)
@@ -386,6 +384,7 @@ func _setup_ui() -> void:
 	layer.add_child(banner)
 	add_child(layer)
 	hud.setup(player)
+	player.notice.connect(func(m): _say(m, 2.5))
 	hud.raid = self
 	map_view = MapView.new()
 	map_view.raid = self
@@ -598,7 +597,7 @@ func _finish(result: String) -> void:
 		"result": result, "time": elapsed, "kills": stats["kills"].duplicate(), "biome": biome,
 		"cause": player.body.cause_of_death, "last_source": player.last_hit_source,
 		"start_value": start_value, "end_value": end_value,
-		"arms_hurt": player.body.frac(Body.Part.ARMS) < 0.5, "boxes": stats["boxes_opened"],
+		"arms_hurt": player.body.arms_frac() < 0.5, "boxes": stats["boxes_opened"],
 		"threat": int(threat), "anomaly": stats["anomaly"],
 	}
 	if corpse_box:

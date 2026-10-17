@@ -69,7 +69,7 @@ func _setup() -> void:
 	elif _scene == "map":
 		game.equipment.equip("primary", _l("rifle_skm"))
 		root.add_child(load("res://scenes/raid.tscn").instantiate())
-	elif _scene == "inv" or _scene == "invload" or _scene == "invfly":
+	elif _scene == "inv" or _scene == "invload" or _scene == "invfly" or _scene == "invbody":
 		game.equipment.equip("primary", _l("rifle_skm"))
 		for k in 3:
 			var mg := Item.new("mag_556_30")
@@ -83,6 +83,10 @@ func _setup() -> void:
 		var r: Node = load("res://scenes/raid.tscn").instantiate()
 		root.add_child(r)
 		_wait = maxi(_wait, 30)
+
+
+func game_eq():
+	return root.get_node("Game").equipment
 
 
 func _l(id: String) -> Item:
@@ -118,6 +122,25 @@ func _process(_delta: float) -> bool:
 				c.color = Color(1, 1, 1)
 		for e in raid.enemies:
 			e.visible = true
+	if _scene == "invbody" and _frames == 22:
+		var raid5: Node = root.get_child(root.get_child_count() - 1)
+		var bd = raid5.player.body
+		bd.hp[Body.Part.L_LEG] = 0.0
+		bd.fracture[Body.Part.L_LEG] = true
+		bd.hp[Body.Part.CHEST] = 40.0
+		bd.bleed[Body.Part.CHEST] = 2
+		bd.bleed[Body.Part.R_ARM] = 1
+		bd.hp[Body.Part.R_ARM] = 25.0
+		bd.fracture[Body.Part.R_LEG] = true
+		bd.hp[Body.Part.HEAD] = 20.0
+		var e5 = game_eq()
+		e5.add_auto(Item.new("medkit"), true)
+		e5.add_auto(Item.new("surgery"), true)
+		e5.add_auto(Item.new("bandage", 2), true)
+		raid5.inv_ui.open_player()
+		raid5.inv_ui.held = Item.new("surgery")
+		raid5.inv_ui._held_pos = Vector2(300, 150)
+		raid5.inv_ui.refresh()
 	if _scene == "invload" and _frames == 22:
 		var raid3: Node = root.get_child(root.get_child_count() - 1)
 		raid3.inv_ui.open_player()

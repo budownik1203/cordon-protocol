@@ -161,7 +161,7 @@ func _tutorial() -> void:
 					e.take_hit(60.0, Vector2.RIGHT, 6)
 	if _frames == 30 + 60 * 5 + 20:
 		_ok(tut.step == 6, "krok 6 po wrogu: %d" % tut.step)
-		player.body.blood = 100.0
+		player.body.pain = 0.0
 		player.global_position = _raid.exits[0]["pos"]
 	if _frames > 30 + 60 * 5 + 20 and _raid.finished:
 		_ok(game.tutorial_done, "szkolenie zaliczone")

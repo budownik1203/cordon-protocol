@@ -87,10 +87,9 @@ func _process(_delta: float) -> bool:
 		if p._cooldown <= 0.0 and not p.reloading and p.weapon:
 			p._fire()
 			_shots += 1
-	if p.body.blood < 60.0 and p.using_item == "":
-		Input.action_press("use_hemostatic")
-	else:
-		Input.action_release("use_hemostatic")
+	if p.body.has_bleed(0) and p.using_item == "":
+		p.start_use("hemostatic")
+		p.start_use("bandage")
 	if p.ammo <= 0 and not p.reloading and p.reserve_ammo() > 0:
 		Input.action_press("reload")
 	else:

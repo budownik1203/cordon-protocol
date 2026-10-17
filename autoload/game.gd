@@ -22,6 +22,10 @@ var next_raid: Dictionary = {}  # {"biome": id, "tutorial": bool}
 var selected_biome: String = "przedmiescia"
 var unlocked: Array = ["przedmiescia"]
 var tutorial_done: bool = false
+const HOTBAR_SIZE := 9
+const DEFAULT_HOTBAR := ["bandage", "hemostatic", "splint", "painkiller", "medkit", "surgery", "", "", ""]
+## Pasek szybkiego dostępu: id przedmiotów przypisane do klawiszy 1-9 (do dostosowania w ekwipunku).
+var hotbar: Array = DEFAULT_HOTBAR.duplicate()
 var contract_seen: bool = false
 var corpse: Dictionary = {}  # {"biome", "items": [dict], "plundered": bool}
 var mail: Array = []  # [{"item": dict, "ready": int}]
@@ -49,6 +53,7 @@ func new_game() -> void:
 	selected_biome = "przedmiescia"
 	unlocked = ["przedmiescia"]
 	tutorial_done = false
+	hotbar = DEFAULT_HOTBAR.duplicate()
 	contract_seen = false
 	corpse = {}
 	mail = []
@@ -312,7 +317,7 @@ func save_game() -> void:
 		"stash": stash.to_array(), "equipment": equipment.to_dict(),
 		"biome": selected_biome, "unlocked": unlocked, "tut": tutorial_done, "contract": contract_seen,
 		"corpse": corpse, "mail": mail, "quests": quests, "kills": kills_total, "extr": extr_by_biome,
-		"ctx": last_ctx,
+		"ctx": last_ctx, "hotbar": hotbar,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -346,6 +351,10 @@ func load_game() -> bool:
 	selected_biome = d.get("biome", "przedmiescia")
 	unlocked = d.get("unlocked", ["przedmiescia"])
 	tutorial_done = d.get("tut", false)
+	hotbar = DEFAULT_HOTBAR.duplicate()
+	var hb: Array = d.get("hotbar", [])
+	for i in mini(hb.size(), HOTBAR_SIZE):
+		hotbar[i] = String(hb[i])
 	contract_seen = d.get("contract", false)
 	corpse = d.get("corpse", {})
 	mail = d.get("mail", [])

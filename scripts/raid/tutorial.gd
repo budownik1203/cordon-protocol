@@ -8,7 +8,7 @@ const STEPS := [
 	"PRZEŁADOWANIE: naciśnij R. Amunicja z kamizelki, pasa i kieszeni ładuje się szybciej niż z plecaka.",
 	"PRZESZUKIWANIE: podejdź do szafki i naciśnij E. Zawartość odsłania się po kolei, a hałas przyciąga uwagę.",
 	"EKWIPUNEK: LPM bierze przedmiot, PPM przenosi lub zakłada, R obraca. Amunicję przeciągnij na magazynek, by go załadować. Zabierz wszystko i zamknij (Tab).",
-	"WRÓG: w ostatnim pokoju czeka szabrownik. Użyj osłon, strzelaj z ukrycia. Leczenie: 1 bandaż, 2 hemostat, 3 szyna, 4 środek.",
+	"WRÓG: w ostatnim pokoju czeka szabrownik. Użyj osłon, strzelaj z ukrycia. Leczenie: klawisze 1-9 (pasek szybkiego dostępu) albo przeciągnij środek na część ciała w ekwipunku.",
 	"WYJŚCIE: stań w zielonej strefie przez 6 sekund. Mapa pod klawiszem M.",
 ]
 

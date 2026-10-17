@@ -35,6 +35,10 @@ var _job: Dictionary = {}  # aktywne ładowanie magazynków
 var _btn_all: Button
 var _btn_sort: Button
 var _btn_load: Button
+var _body_view: BodyView
+var _hb: Control  # edytor paska szybkiego dostępu
+var _hb_hover: int = -1
+var _hover_item: Item = null
 
 const LOAD_TICK := 0.06
 const FLY_TIME := 0.16
@@ -76,8 +80,8 @@ func setup(eq: Equipment, plr: Player, p_raid: bool) -> void:
 	_root.add_child(_weight)
 
 	_info = Label.new()
-	_info.position = Vector2(6, 196)
-	_info.size = Vector2(112, 150)
+	_info.position = Vector2(6, 196) if not raid_mode else Vector2(124, 214)
+	_info.size = Vector2(112, 150) if not raid_mode else Vector2(116, 64)
 	_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_info.add_theme_font_size_override("font_size", 8)
 	_info.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
@@ -92,6 +96,32 @@ func setup(eq: Equipment, plr: Player, p_raid: bool) -> void:
 	_msg.add_theme_color_override("font_color", Color(1, 0.7, 0.4))
 	_root.add_child(_msg)
 
+	if raid_mode and player != null:
+		var bt := Label.new()
+		bt.text = "STAN CIAŁA"
+		bt.position = Vector2(6, 187)
+		bt.add_theme_font_size_override("font_size", 7)
+		bt.add_theme_color_override("font_color", Color(0.65, 0.7, 0.75))
+		_root.add_child(bt)
+		_body_view = BodyView.new()
+		_body_view.setup(player.body, 1.3, true, true, player)
+		_body_view.position = Vector2(4, 196)
+		_body_view.part_input.connect(_on_body_input)
+		_body_view.part_hovered.connect(_on_body_hover)
+		_root.add_child(_body_view)
+	var hl := Label.new()
+	hl.text = "PASEK SZYBKIEGO DOSTĘPU (trzymaj środek i kliknij slot, albo najedź na środek i wciśnij 1-9; PPM czyści)"
+	hl.position = Vector2(244, 248)
+	hl.add_theme_font_size_override("font_size", 6)
+	hl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.7))
+	_root.add_child(hl)
+	_hb = Control.new()
+	_hb.position = Vector2(244, 258)
+	_hb.size = Vector2(Game.HOTBAR_SIZE * 24.0, 22.0)
+	_hb.draw.connect(_draw_hotbar)
+	_hb.gui_input.connect(_on_hotbar_input)
+	_hb.mouse_exited.connect(func(): _hb_hover = -1)
+	_root.add_child(_hb)
 	_btn_load = _small_button("Załaduj mag. [V]", Vector2(124, 298), Vector2(96, 16), _start_load_all)
 	_btn_load.tooltip_text = "Pakuje luźną amunicję do magazynków (animowane, klik przerywa)."
 	_btn_sort = _small_button("Sortuj", Vector2(224, 298), Vector2(40, 16), _sort_all)
@@ -240,7 +270,7 @@ func _make_grid(bag: Bag, pos: Vector2, hide_hidden: bool) -> GridView:
 	g.set_bag(bag)
 	_grids.append(g)
 	g.cell_input.connect(_on_grid_input)
-	g.hovered.connect(func(_v, it): _show_info(it))
+	g.hovered.connect(func(_v, it): _hover_item = it; _show_info(it))
 	return g
 
 
@@ -272,6 +302,13 @@ func _show_info(it: Item) -> void:
 		lines.append("Penetracja: %d" % d["pen"])
 	if d.get("type", "") == "container":
 		lines.append("Redukcja wagi: %d%%, miejsca: %d" % [int(d["reduction"] * 100), it.bag.cell_count()])
+	if d.get("type", "") == "med":
+		if d.get("heal", "") == "medkit":
+			lines.append("Zasób: %d HP" % int(it.durability))
+		if d.get("heal", "") == "painkiller":
+			lines.append("Działa na całe ciało.")
+		elif raid_mode:
+			lines.append("Przeciągnij na część ciała. Shift+PPM: użyj automatycznie.")
 	if d.get("type", "") == "doc":
 		lines.append("")
 		lines.append(it.text)
@@ -294,6 +331,9 @@ func _process(delta: float) -> void:
 	var mp := _root.get_local_mouse_position()
 	_held_pos = _held_pos.lerp(mp, 1.0 - exp(-delta * 26.0))
 	_held_lift = move_toward(_held_lift, 1.0 if held != null else 0.0, delta * 9.0)
+	if _body_view:
+		_body_view.hint_kind = String(held.def().get("heal", "")) if held != null and held.type() == "med" else ""
+	_hb.queue_redraw()
 	_tick_ghosts(delta)
 	_tick_job(delta)
 	_held_draw.queue_redraw()
@@ -558,6 +598,11 @@ func _input(event: InputEvent) -> void:
 		if was_held_job and held != null:
 			pass
 	if event is InputEventKey and event.pressed and not event.echo:
+		var kc: int = event.physical_keycode
+		if kc >= KEY_1 and kc <= KEY_9 and _hover_item != null and _hover_item.type() == "med":
+			_bind_hotbar(kc - KEY_1, _hover_item.id)
+			get_viewport().set_input_as_handled()
+			return
 		if event.physical_keycode == KEY_V:
 			_start_load_all()
 			get_viewport().set_input_as_handled()
@@ -619,6 +664,12 @@ func _on_grid_input(view: GridView, cell: Vector2i, ev: InputEventMouseButton) -
 		else:
 			var it2 := bag.item_at(cell.x, cell.y)
 			if it2 and it2.revealed:
+				if ev.shift_pressed and it2.type() == "med" and raid_mode and player != null and _is_player_bag(bag):
+					var msg := player.start_use(it2.id)
+					if msg != "":
+						_flash(msg)
+						Audio.play("ui_deny", -8.0)
+					return
 				_quick_action(bag, it2)
 
 
@@ -799,3 +850,112 @@ func _on_slot_input(view: SlotView, ev: InputEventMouseButton) -> void:
 			else:
 				equipment.equip(slot, it2)
 				_flash("Brak miejsca.")
+
+
+# --- ciało i pasek szybkiego dostępu ----------------------------------------------
+
+func _on_body_hover(part: int) -> void:
+	if part < 0:
+		_info.text = ""
+		return
+	var b := player.body
+	var lines := ["%s: %d/%d HP" % [Body.PART_NAMES[part], int(ceil(b.hp[part])), int(b.max_hp[part])]]
+	for f in b.status_flags(part):
+		lines.append(f)
+	if b.max_hp[part] < Body.MAX_HP[part] - 0.5:
+		lines.append("Po operacji: maks. %d HP" % int(b.max_hp[part]))
+	_info.text = "\n".join(lines)
+
+
+func _on_body_input(part: int, ev: InputEventMouseButton) -> void:
+	if ev.button_index != MOUSE_BUTTON_LEFT or player == null:
+		return
+	if held == null:
+		return
+	if held.type() != "med":
+		_flash("To nie jest środek medyczny.")
+		return
+	var it := held
+	if it.def().get("heal", "") == "painkiller":
+		part = -1
+	# środek musi być w ekwipunku gracza (zabieg zużywa go z plecaka/kieszeni)
+	held = null
+	if not _is_player_item(it):
+		if not equipment.add_auto(it):
+			held = it
+			_flash("Brak miejsca w ekwipunku na ten środek.")
+			return
+	else:
+		_return_held_item(it)
+	_after_change()
+	var msg := player.start_use(it.id, part)
+	if msg != "":
+		_flash(msg)
+		Audio.play("ui_deny", -8.0)
+	else:
+		_flash("Zabieg: %s" % ("całe ciało" if part < 0 else Body.PART_NAMES[part]))
+
+
+func _is_player_item(it: Item) -> bool:
+	for e in equipment.bags():
+		if (e["bag"] as Bag).items.has(it):
+			return true
+	return false
+
+
+func _return_held_item(it: Item) -> void:
+	if held_src and held_src.add_auto(it):
+		return
+	if not equipment.add_auto(it):
+		if other_bag == null or not other_bag.add_auto(it):
+			Game.stash.add_auto(it)
+
+
+func _bind_hotbar(slot: int, id: String) -> void:
+	for i in Game.HOTBAR_SIZE:
+		if Game.hotbar[i] == id:
+			Game.hotbar[i] = ""
+	Game.hotbar[slot] = id
+	Audio.play("ui_click", -6.0, 1.3, 0.0)
+	_flash("Przypisano do [%d]: %s" % [slot + 1, ItemDB.get_def(id).get("name", id)])
+
+
+func _draw_hotbar() -> void:
+	var font := ThemeDB.fallback_font
+	for i in Game.HOTBAR_SIZE:
+		var r := Rect2(i * 24.0, 0, 22, 22)
+		_hb.draw_rect(r, Color(0.1, 0.11, 0.13))
+		var hot := i == _hb_hover or (held != null and held.type() == "med" and i == _hb_hover)
+		_hb.draw_rect(r, Color(1, 1, 1) if hot else Color(0.35, 0.37, 0.42), false, 1.0)
+		_hb.draw_string(font, r.position + Vector2(2, 7), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(0.7, 0.75, 0.8))
+		var id: String = Game.hotbar[i]
+		if id == "":
+			continue
+		var d := ItemDB.get_def(id)
+		var n := equipment.count_of(id) + (Game.stash.count_of(id) if not raid_mode else 0)
+		var c: Color = d.get("color", Color(0.6, 0.6, 0.6))
+		if n <= 0:
+			c = c.darkened(0.6)
+		var ir := Rect2(r.position + Vector2(4, 7), Vector2(14, 12))
+		_hb.draw_rect(ir, c.darkened(0.2))
+		_hb.draw_rect(ir, c.lightened(0.15), false, 1.0)
+		_hb.draw_string(font, ir.position + Vector2(1, 8), String(d.get("name", id)).substr(0, 3), HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(1, 1, 1))
+
+
+func _on_hotbar_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_hb_hover = int(event.position.x / 24.0) if event.position.x >= 0 else -1
+		if _hb_hover >= Game.HOTBAR_SIZE:
+			_hb_hover = -1
+	elif event is InputEventMouseButton and event.pressed:
+		var i := int(event.position.x / 24.0)
+		if i < 0 or i >= Game.HOTBAR_SIZE:
+			return
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			Game.hotbar[i] = ""
+			Audio.play("ui_click", -8.0, 0.8, 0.0)
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			if held != null and held.type() == "med":
+				_bind_hotbar(i, held.id)
+			elif held != null:
+				_flash("Na pasku mogą być tylko środki medyczne.")

@@ -84,7 +84,7 @@ func _stock() -> Array:
 				s.append_array(["dmr_sw", "ammo_762", "mag_762_10", "helmet_4", "armor_5"])
 			return s
 		"med":
-			return ["bandage", "hemostatic", "splint", "painkiller"]
+			return ["bandage", "hemostatic", "splint", "painkiller", "medkit", "surgery"]
 		_:
 			return ["lamp", "battery", "tape", "watch", "radio", "key_exit"]
 

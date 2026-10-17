@@ -137,7 +137,7 @@ func take_hit(dmg: float, dir: Vector2, pen: int = 2) -> void:
 	var part := body.pick_part()
 	var dealt := body.apply_hit(part, dmg, pen)
 	_flash = 0.12
-	if dealt < dmg * 0.85 and body.vest != null and part in [Body.Part.CHEST, Body.Part.ABDOMEN, Body.Part.HEAD]:
+	if dealt < dmg * 0.85 and body.vest != null and part in [Body.Part.CHEST, Body.Part.STOMACH, Body.Part.HEAD]:
 		Audio.play_at("hit_armor", global_position, -4.0, 1.0, 500.0)
 		FxLayer.spawn(self, global_position, "spark", dir, 6)
 	else:
@@ -233,7 +233,7 @@ func _think() -> void:
 	if not has_target:
 		return
 
-	var weak := body.total_frac() < weak_threshold or body.blood < 35.0
+	var weak := body.total_frac() < weak_threshold
 	match state:
 		State.IDLE:
 			_set_state(State.ADVANCE if not sees_player else _combat_state(weak))
@@ -418,7 +418,7 @@ func _shoot() -> void:
 
 
 func pain_factor() -> float:
-	return body.pain + (1.0 - body.frac(Body.Part.ARMS))
+	return body.pain + (1.0 - body.arms_frac())
 
 
 func _draw() -> void:

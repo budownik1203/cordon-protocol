@@ -35,7 +35,7 @@ static func _make(e: Array, rng: RandomNumberGenerator, biome: String = "przedmi
 
 
 const T_SZAFKA := [
-	[20, "bandage", 1, 2], [10, "painkiller", 1, 1], [8, "hemostatic", 1, 1], [6, "splint", 1, 1],
+	[20, "bandage", 1, 2], [10, "painkiller", 1, 1], [8, "hemostatic", 1, 1], [6, "splint", 1, 1], [3, "medkit"],
 	[16, "ammo_9", 8, 24], [4, "mag_9_12"], [14, "watch"], [12, "tape"], [10, "lamp"], [4, "battery"],
 ]
 const T_SKRZYNIA := [
@@ -48,7 +48,7 @@ const T_BIURKO := [
 ]
 const T_SEJF := [
 	[14, "sample"], [10, "key_exit"], [12, "watch", 1, 2], [8, "rifle_skm"], [8, "armor_4"], [8, "helmet_3"],
-	[10, "ammo_556", 30, 60], [6, "mag_556_30"], [8, "hemostatic", 1, 2], [6, "radio"],
+	[10, "ammo_556", 30, 60], [6, "mag_556_30"], [8, "hemostatic", 1, 2], [6, "medkit"], [3, "surgery"], [6, "radio"],
 ]
 const T_SZAB := [
 	[22, "ammo_9", 8, 25], [18, "bandage", 1, 1], [8, "painkiller"], [12, "watch"], [8, "tape"],
@@ -56,11 +56,11 @@ const T_SZAB := [
 ]
 const T_NAJEM := [
 	[22, "ammo_556", 15, 40], [10, "ammo_9", 10, 25], [18, "bandage", 1, 2], [12, "painkiller"],
-	[8, "hemostatic"], [7, "armor_3"], [8, "helmet_2"], [5, "rifle_skm"], [4, "smg_kr"], [6, "radio"],
+	[8, "hemostatic"], [4, "medkit"], [7, "armor_3"], [8, "helmet_2"], [5, "rifle_skm"], [4, "smg_kr"], [6, "radio"],
 	[5, "sample"], [6, "mag_556_30"], [4, "mag_9_32"], [2, "ammo_762", 10, 20], [1, "dmr_sw"],
 ]
 const T_WOJSK := [
-	[22, "ammo_556", 20, 50], [14, "hemostatic", 1, 2], [12, "bandage", 1, 2], [8, "helmet_3"], [6, "armor_4"],
+	[22, "ammo_556", 20, 50], [14, "hemostatic", 1, 2], [6, "medkit"], [2, "surgery"], [12, "bandage", 1, 2], [8, "helmet_3"], [6, "armor_4"],
 	[10, "rifle_skm"], [10, "mag_556_30"], [3, "mag_762_10"], [8, "key_exit"], [6, "radio"], [6, "battery"], [4, "document"], [4, "ammo_762", 10, 30], [2, "dmr_sw"], [2, "helmet_4"],
 ]
 const T_KORP := [

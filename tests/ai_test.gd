@@ -35,9 +35,9 @@ func _process(_delta: float) -> bool:
 		for k in _visited:
 			if k.ends_with("+flank") or k.begins_with("flank"):
 				any_flank = true
-		var hurt: bool = p.body.total_frac() < 1.0 or p.body.blood < 100.0 or not p.body.alive
+		var hurt: bool = p.body.total_frac() < 1.0 or not p.body.alive
 		print("AI states: ", _visited.keys())
-		print("player hp frac=", p.body.total_frac(), " blood=", p.body.blood, " alive=", p.body.alive)
+		print("player hp frac=", p.body.total_frac(), " ", " alive=", p.body.alive)
 		var ok := any_cover and any_flank and hurt
 		print("AI TEST ", "OK" if ok else "FAIL")
 		quit(0 if ok else 1)

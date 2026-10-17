@@ -15,6 +15,15 @@ WASD ruch · mysz celowanie/strzał · R wymiana magazynka · V pakowanie luźne
 - Śmierć: ubezpieczone przedmioty wracają pocztą, reszta w zwłokach do odzyskania w następnym rajdzie
 - Grafika i dźwięk generowane proceduralnie: `tools/gen_art.py`, `tools/gen_audio.py`
 
+## Obrażenia i leczenie (jak w Tarkovie)
+- 7 części ciała (głowa 35, klatka 85, brzuch 70, ręce 60, nogi 65 HP). Śmierć: głowa lub klatka na 0.
+- Krwawienia (lekkie/ciężkie) i złamania są przypisane do części. Kończyna na 0 HP jest zniszczona, a nadmiar obrażeń rozchodzi się na resztę ciała (bez głowy).
+- Bandaż: lekkie krwawienie. Opaska hemostatyczna: ciężkie. Szyna: złamanie. Apteczka: leczy HP wybranej części z zasobu. Zestaw chirurgiczny: przywraca zniszczoną kończynę (z karą do maks. HP). Środek przeciwbólowy działa na całe ciało i łagodzi złamania.
+- Leczenie per część: w ekwipunku (Tab) przeciągnij środek na część ludzika albo Shift+PPM na środku (auto). Klawisze 1-9: pasek szybkiego dostępu, cel dobierany automatycznie.
+- Pasek do dostosowania: w ekwipunku trzymaj środek i kliknij slot albo najedź na środek i wciśnij 1-9. PPM czyści slot.
+- HUD pokazuje tylko ikonkę obrażeń, pasek skrótów i amunicję. Okno 1920x1080 (świat 640x360 w skali x3).
+- Ruch: inercja, wolny obrót tułowia (gwałtowny obrót psuje celowanie), rozbieg sprintu, wpływ wagi i nóg.
+
 ## Magazynki
 - Magazynek to przedmiot z nabojami (`loaded`); broń ma włożony magazynek (`Item.mag`).
 - R: wymiana na najpełniejszy zapasowy (taktyczna szybciej niż po opróżnieniu; z plecaka +1 s). Bez naładowanych zapasów R dobija naboje z luźnej amunicji jeden po jednym.

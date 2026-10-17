@@ -4,12 +4,18 @@ extends CharacterBody2D
 
 signal ammo_changed(in_mag: int, mag_size: int, reloading: bool)
 signal died(cause: String)
+signal notice(text: String)
 
-const WALK_SPEED := 90.0
-const CROUCH_SPEED := 45.0
-const SPRINT_MULT := 1.6
-const ACCEL := 700.0
-const FRICTION := 900.0
+const WALK_SPEED := 80.0
+const CROUCH_SPEED := 40.0
+const SPRINT_MULT := 1.55
+## Ociężały ruch: powolny rozbieg i hamowanie, wolny obrót tułowia, rozbieg sprintu.
+const ACCEL := 240.0
+const FRICTION := 330.0
+const BRAKE := 420.0  # dodatkowe hamowanie przy zawracaniu
+const TURN_RATE := 7.5  # rad/s przy chodzie
+const TURN_RATE_SPRINT := 3.2
+const SPRINT_RAMP := 0.75  # sekundy do pełnego sprintu
 const MUZZLE_OFFSET := 12.0
 const FOV_DEG := 110.0
 const SIGHT_RANGE := 300.0
@@ -27,6 +33,12 @@ var crouching: bool = false
 var sprinting: bool = false
 var stamina: float = 100.0
 var using_item: String = ""
+var using_part: int = -1
+var _use_total: float = 0.0
+var _sprint_t: float = 0.0
+var _want_dir: Vector2 = Vector2.RIGHT
+var _turn_vel: float = 0.0
+var _cam: Camera2D = null
 var input_locked: bool = false  # np. otwarty ekwipunek
 var sight_nav: GridNav
 var kills: Dictionary = {}
@@ -204,7 +216,8 @@ func current_spread_deg() -> float:
 		return 0.0
 	var move_factor := clampf(velocity.length() / WALK_SPEED, 0.0, 1.0)
 	var crouch_mult := 0.6 if crouching else 1.0
-	return (weapon.base_spread_deg + weapon.move_spread_deg * move_factor + _recoil_deg) \
+	var sway := minf(2.5, absf(_turn_vel) * 0.35)  # gwałtowny obrót tułowia rozstraja celowanie
+	return (weapon.base_spread_deg + weapon.move_spread_deg * move_factor + _recoil_deg + sway) \
 		* crouch_mult * body.spread_mult()
 
 
@@ -226,13 +239,14 @@ func take_hit(damage: float, _dir: Vector2, penetration: int = 2, source: String
 		return
 	last_hit_source = source
 	var was_alive := body.alive
-	body.apply_hit(body.pick_part(), damage, penetration)
+	var part := body.pick_part()
+	body.apply_hit(part, damage, penetration)
 	Audio.play("hurt", -3.0)
 	FxLayer.spawn(self, global_position, "blood", _dir, 8)
 	if was_alive and not body.alive:
 		Audio.play("die_player", 0.0, 1.0, 0.0)
-	if using_item != "":
-		using_item = ""
+	if using_item != "" and using_part == part:
+		using_item = ""  # rana w leczonej części przerywa zabieg
 
 
 func _physics_process(delta: float) -> void:
@@ -241,16 +255,28 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		return
 	crouching = Input.is_action_pressed("crouch")
-	_aim_dir = (get_global_mouse_position() - global_position).normalized()
-	rotation = _aim_dir.angle()
+	_want_dir = (get_global_mouse_position() - global_position).normalized()
+	var load_k := equipment.speed_mult()
+	# tułów obraca się wolniej: im ciężej, w sprincie i z uszkodzonymi nogami
+	var turn := (TURN_RATE_SPRINT if sprinting else TURN_RATE) * (0.55 + 0.45 * load_k) * (0.6 + 0.4 * body.speed_mult())
+	if crouching:
+		turn *= 1.3
+	var want_ang := _want_dir.angle()
+	var diff := angle_difference(rotation, want_ang)
+	var step := clampf(diff, -turn * delta, turn * delta)
+	_turn_vel = step / maxf(delta, 0.0001)
+	rotation += step
+	_aim_dir = Vector2.RIGHT.rotated(rotation)
 
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	sprinting = Input.is_action_pressed("sprint") and input != Vector2.ZERO and stamina > 5.0 \
-		and not crouching and using_item == ""
-	var speed := (CROUCH_SPEED if crouching else WALK_SPEED) * body.speed_mult() * equipment.speed_mult()
+		and not crouching and using_item == "" and body.can_sprint()
+	_sprint_t = move_toward(_sprint_t, 1.0 if sprinting else 0.0, delta / SPRINT_RAMP * (1.0 if sprinting else 2.5))
+	var ease_k := _sprint_t * _sprint_t * (3.0 - 2.0 * _sprint_t)
+	var speed := (CROUCH_SPEED if crouching else WALK_SPEED) * body.speed_mult() * load_k
+	speed *= lerpf(1.0, SPRINT_MULT, ease_k)
 	if sprinting:
-		speed *= SPRINT_MULT
-		stamina = maxf(0.0, stamina - 22.0 * delta)
+		stamina = maxf(0.0, stamina - 22.0 * (1.0 + (1.0 - load_k)) * delta)
 		_sprint_noise_t -= delta
 		if _sprint_noise_t <= 0.0:
 			_sprint_noise_t = 0.5
@@ -260,9 +286,16 @@ func _physics_process(delta: float) -> void:
 	if using_item != "":
 		speed *= 0.4
 	if input != Vector2.ZERO:
-		velocity = velocity.move_toward(input * speed, ACCEL * delta)
+		var accel := ACCEL * (0.55 + 0.45 * load_k)
+		var dir_now := velocity.normalized()
+		var opposing := maxf(0.0, -dir_now.dot(input.normalized())) if velocity.length() > 5.0 else 0.0
+		if opposing > 0.0:
+			accel += BRAKE * opposing  # zawracanie wymaga wyhamowania
+		else:
+			accel *= 1.0 - 0.3 * absf(dir_now.cross(input.normalized()))  # zakręt kosztuje rozpęd
+		velocity = velocity.move_toward(input * speed, accel * delta)
 	else:
-		velocity = velocity.move_toward(Vector2.ZERO, FRICTION * delta)
+		velocity = velocity.move_toward(Vector2.ZERO, FRICTION * (0.7 + 0.3 * load_k) * delta)
 	move_and_slide()
 	_update_audio_and_anim(delta, input)
 
@@ -312,11 +345,23 @@ func _update_audio_and_anim(delta: float, input: Vector2) -> void:
 				Events.emit_noise(global_position, 48.0, self)
 		elif crouching:
 			_step_dist = 0.0
-	if body.pain > 0.45 or body.blood < 55.0:
+	# kołysanie kamery w rytmie kroków (ciężki chód)
+	if _cam == null:
+		for c in get_children():
+			if c is Camera2D:
+				_cam = c
+	if _cam:
+		var amp := 0.0
+		if spd > 5.0:
+			amp = (1.6 if sprinting else 0.8) * clampf(spd / WALK_SPEED, 0.0, 1.5) * (1.3 - 0.3 * equipment.speed_mult())
+		var target := Vector2(sin(_anim_t * PI * 0.5) * amp * 0.5, absf(sin(_anim_t * PI)) * amp)
+		_cam.offset = _cam.offset.lerp(target, 1.0 - exp(-delta * 12.0))
+	var vitals := minf(body.frac(Body.Part.CHEST), body.frac(Body.Part.HEAD))
+	if body.pain > 0.45 or vitals < 0.45 or body.has_bleed(1):
 		_heart_t -= delta
 		if _heart_t <= 0.0:
-			_heart_t = 1.1 if body.blood > 35.0 else 0.75
-			Audio.play("heartbeat", -8.0 + 6.0 * clampf(1.0 - body.blood / 100.0, 0.0, 1.0), 1.0, 0.0)
+			_heart_t = 1.1 if vitals > 0.3 else 0.75
+			Audio.play("heartbeat", -8.0 + 6.0 * clampf(1.0 - vitals, 0.0, 1.0), 1.0, 0.0)
 	queue_redraw()
 
 
@@ -327,36 +372,95 @@ func _swap_weapon() -> void:
 		Audio.play("swap_weapon", -4.0)
 
 
+func use_progress() -> float:
+	if using_item == "" or _use_total <= 0.0:
+		return 0.0
+	return clampf(1.0 - _use_left / _use_total, 0.0, 1.0)
+
+
+## Zaczyna zabieg środkiem `item_id` na części `part` (-1: cel wybierany automatycznie).
+## Zwraca komunikat o błędzie albo "" gdy się udało lub nic się nie stało.
+func start_use(item_id: String, part: int = -1) -> String:
+	if using_item != "" or not body.alive:
+		return ""
+	if equipment.count_of(item_id) <= 0:
+		return "Brak: %s." % ItemDB.get_def(item_id).get("name", item_id)
+	var d := ItemDB.get_def(item_id)
+	var kind: String = d.get("heal", "")
+	if kind == "":
+		return ""
+	if kind != "painkiller":
+		if part < 0:
+			part = body.auto_target(kind)
+		if part < 0:
+			return "Nic do leczenia tym środkiem."
+		if not body.needs(kind, part):
+			return "%s tego nie potrzebuje." % Body.PART_NAMES[part]
+	using_item = item_id
+	using_part = part
+	_use_total = d.get("use_time", 3.0)
+	# przedmioty z plecaka wyciąga się dłużej niż z kamizelki, pasa i kieszeni
+	var in_quick := false
+	for e in equipment.bags():
+		if e["quick"] and e["bag"].count_of(item_id) > 0:
+			in_quick = true
+	if not in_quick:
+		_use_total += 1.5
+	_use_total *= body.reload_mult()  # uszkodzone ręce wszystko wydłużają
+	_use_left = _use_total
+	reloading = false
+	loading_mags = false
+	Events.emit_noise(global_position, 120.0, self)
+	Audio.play("bandage", -8.0)
+	return ""
+
+
 func _handle_healing(delta: float) -> void:
 	if using_item == "":
 		if input_locked:
 			return
-		for item in ["bandage", "hemostatic", "splint", "painkiller"]:
-			if Input.is_action_just_pressed("use_" + item) and equipment.count_of(item) > 0:
-				using_item = item
-				_use_left = ItemDB.get_def(item).get("use_time", 3.0)
-				# przedmioty z plecaka wyciąga się dłużej niż z kamizelki, pasa i kieszeni
-				var in_quick := false
-				for e in equipment.bags():
-					if e["quick"] and e["bag"].count_of(item) > 0:
-						in_quick = true
-				if not in_quick:
-					_use_left += 1.5
-				reloading = false
-				Events.emit_noise(global_position, 120.0, self)
+		for i in Game.HOTBAR_SIZE:
+			if Input.is_action_just_pressed("hotbar_%d" % (i + 1)):
+				var id: String = Game.hotbar[i]
+				if id != "":
+					var msg := start_use(id)
+					if msg != "":
+						notice.emit(msg)
 				break
 	else:
 		_use_left -= delta
 		if _use_left <= 0.0:
-			var ok := false
-			match using_item:
-				"bandage": ok = body.use_bandage()
-				"hemostatic": ok = body.use_hemostatic()
-				"splint": ok = body.use_splint()
-				"painkiller": ok = body.use_painkiller()
-			if ok:
-				equipment.take(using_item, 1)
-			using_item = ""
+			_finish_use()
+
+
+func _finish_use() -> void:
+	var d := ItemDB.get_def(using_item)
+	var kind: String = d.get("heal", "")
+	var part := using_part
+	var ok := false
+	var consume := true
+	match kind:
+		"bandage": ok = body.use_bandage(part)
+		"hemostatic": ok = body.use_hemostatic(part)
+		"splint": ok = body.use_splint(part)
+		"painkiller": ok = body.use_painkiller()
+		"surgery": ok = body.use_surgery(part)
+		"medkit":
+			consume = false
+			var found := equipment.find_item(using_item)
+			if not found.is_empty():
+				var kit: Item = found["item"]
+				var give := body.heal(part, minf(kit.durability, 60.0))
+				ok = give > 0.0
+				kit.durability -= give
+				if kit.durability <= 0.5:
+					(found["bag"] as Bag).remove(kit)
+	if ok and consume:
+		equipment.take(using_item, 1)
+	if not ok:
+		notice.emit("Zabieg nie zadziałał.")
+	using_item = ""
+	using_part = -1
 
 
 func _start_reload() -> void:

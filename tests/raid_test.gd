@@ -46,7 +46,7 @@ func _process(_delta: float) -> bool:
 	if _frames == 202:
 		var box = _raid.boxes[0]
 		player.global_position = box.global_position + Vector2(0, 20)
-		player.body.blood = 100.0
+		player.body.pain = 0.0
 		_raid.inv_ui.open_box(box)
 		print("opened box ", box.display_name(), " items=", box.bag.items.size())
 	if _frames == 202 + 60 * 5:

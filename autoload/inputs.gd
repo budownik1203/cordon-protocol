@@ -13,10 +13,8 @@ func _ready() -> void:
 	_key("interact", KEY_E)
 	_key("inventory", KEY_TAB)
 	_key("swap_weapon", KEY_Q)
-	_key("use_bandage", KEY_1)
-	_key("use_hemostatic", KEY_2)
-	_key("use_splint", KEY_3)
-	_key("use_painkiller", KEY_4)
+	for i in 9:
+		_key("hotbar_%d" % (i + 1), KEY_1 + i)
 	_key("restart", KEY_ENTER)
 	_key("map", KEY_M)
 	_key("combine", KEY_V)
