@@ -1,33 +1,57 @@
 class_name Player
 extends CharacterBody2D
-## Gracz: ruch, celowanie, strzał hitscan, ciało z ranami i leczenie.
+## Gracz: ruch, sprint, celowanie, strzał hitscan, ciało z ranami, leczenie z ekwipunku.
 
 signal ammo_changed(in_mag: int, mag_size: int, reloading: bool)
 signal died(cause: String)
 
 const WALK_SPEED := 90.0
 const CROUCH_SPEED := 45.0
+const SPRINT_MULT := 1.6
 const ACCEL := 700.0
 const FRICTION := 900.0
 const MUZZLE_OFFSET := 12.0
+const FOV_DEG := 110.0
+const SIGHT_RANGE := 300.0
+const NEAR_SIGHT := 36.0
 
+var equipment: Equipment
 var weapon: WeaponData
+var weapon_item: Item
+var weapon_slot: String = "primary"
 var body: Body
-var ammo: int = 0
 var reloading: bool = false
 var crouching: bool = false
-## Zapasy leczenia (docelowo przedmioty w ekwipunku).
-var supplies := {"bandage": 3, "hemostatic": 1, "splint": 1, "painkiller": 2}
+var sprinting: bool = false
+var stamina: float = 100.0
 var using_item: String = ""
+var input_locked: bool = false  # np. otwarty ekwipunek
+var sight_nav: GridNav
+var kills: Dictionary = {}
+var last_hit_source: String = ""
 
 var _cooldown: float = 0.0
 var _reload_left: float = 0.0
 var _use_left: float = 0.0
+var _use_extra: float = 0.0
 var _recoil_deg: float = 0.0
 var _aim_dir: Vector2 = Vector2.RIGHT
 var _fx: Node2D
+var _sprint_noise_t: float = 0.0
 
-const USE_TIME := {"bandage": 3.0, "hemostatic": 4.0, "splint": 6.0, "painkiller": 2.0}
+## Zgodność z testami: liczba naboi w magazynku aktualnej broni.
+var ammo: int:
+	get:
+		return weapon_item.loaded if weapon_item else 0
+	set(v):
+		if weapon_item:
+			weapon_item.loaded = v
+
+
+func setup(p_equipment: Equipment) -> void:
+	equipment = p_equipment
+	_select_weapon("primary" if equipment.get_slot("primary") else "pistol")
+	_sync_armor()
 
 
 func _ready() -> void:
@@ -38,13 +62,10 @@ func _ready() -> void:
 	circle.radius = 6.0
 	shape.shape = circle
 	add_child(shape)
-	weapon = WeaponData.new()
-	ammo = weapon.magazine_size
 	body = Body.new()
-	body.helmet = ArmorData.make("Hełm", 2, 40.0)
-	body.vest = ArmorData.make("Kamizelka", 3, 60.0)
 	body.died.connect(func(c): died.emit(c))
-	ammo_changed.emit(ammo, weapon.magazine_size, false)
+	if equipment == null:
+		setup(Equipment.new())
 
 
 func set_fx_layer(fx: Node2D) -> void:
@@ -55,19 +76,98 @@ func is_alive() -> bool:
 	return body.alive
 
 
+func _select_weapon(slot: String) -> void:
+	weapon_slot = slot
+	weapon_item = equipment.get_slot(slot)
+	reloading = false
+	if weapon_item == null:
+		weapon = null
+		return
+	var wd: Dictionary = weapon_item.def().get("weapon", {})
+	weapon = WeaponData.new()
+	weapon.display_name = wd.get("name", "Broń")
+	weapon.damage = wd.get("damage", 20.0)
+	weapon.rounds_per_minute = wd.get("rpm", 500.0)
+	weapon.magazine_size = wd.get("mag", 30)
+	weapon.reload_time = wd.get("reload", 2.0)
+	weapon.base_spread_deg = wd.get("spread", 1.0)
+	weapon.move_spread_deg = wd.get("move_spread", 4.0)
+	weapon.recoil_per_shot_deg = wd.get("recoil", 0.9)
+	weapon.recoil_recovery_deg = wd.get("recovery", 6.0)
+	weapon.max_range = wd.get("range", 500.0)
+	weapon.noise_radius = wd.get("noise", 300.0)
+	var ammo_id := _ammo_id()
+	weapon.penetration = ItemDB.get_def(ammo_id).get("pen", 2)
+	ammo_changed.emit(ammo, weapon.magazine_size, false)
+
+
+func _ammo_id() -> String:
+	if weapon_item == null:
+		return ""
+	return "ammo_" + String(weapon_item.def().get("ammo_type", ""))
+
+
+func reserve_ammo() -> int:
+	if weapon_item == null:
+		return 0
+	return equipment.count_of(_ammo_id())
+
+
+## Przenosi pancerz z przedmiotów do modelu ciała (zużycie zapisywane z powrotem).
+func _sync_armor() -> void:
+	body.helmet = _armor_from(equipment.get_slot("head"))
+	body.vest = _armor_from(equipment.get_slot("armor"))
+
+
+func _armor_from(it: Item) -> ArmorData:
+	if it == null:
+		return null
+	var a := ArmorData.make(it.item_name(), it.def().get("armor_class", 1), it.def().get("durability", 40.0))
+	a.durability = it.durability
+	return a
+
+
+func writeback_armor() -> void:
+	var h := equipment.get_slot("head")
+	if h and body.helmet:
+		h.durability = body.helmet.durability
+	var v := equipment.get_slot("armor")
+	if v and body.vest:
+		v.durability = body.vest.durability
+
+
+func equipment_changed() -> void:
+	_sync_armor()
+	_select_weapon(weapon_slot if equipment.get_slot(weapon_slot) else ("primary" if equipment.get_slot("primary") else "pistol"))
+
+
 func current_spread_deg() -> float:
+	if weapon == null:
+		return 0.0
 	var move_factor := clampf(velocity.length() / WALK_SPEED, 0.0, 1.0)
 	var crouch_mult := 0.6 if crouching else 1.0
 	return (weapon.base_spread_deg + weapon.move_spread_deg * move_factor + _recoil_deg) \
 		* crouch_mult * body.spread_mult()
 
 
+func can_see_point(p: Vector2) -> bool:
+	var to_p := p - global_position
+	var d := to_p.length()
+	if d <= NEAR_SIGHT:
+		return true
+	if d > SIGHT_RANGE:
+		return false
+	if absf(rad_to_deg(_aim_dir.angle_to(to_p))) > FOV_DEG * 0.5:
+		return false
+	return sight_nav == null or sight_nav.has_los(global_position, p)
+
+
 ## Wywoływane przez wrogów. Część ciała losowana, bo widok z góry nie ma wysokości.
-func take_hit(damage: float, _dir: Vector2, penetration: int = 2) -> void:
+func take_hit(damage: float, _dir: Vector2, penetration: int = 2, source: String = "") -> void:
 	if not body.alive:
 		return
+	last_hit_source = source
 	body.apply_hit(body.pick_part(), damage, penetration)
-	# trafienie przerywa leczenie
 	if using_item != "":
 		using_item = ""
 
@@ -82,7 +182,18 @@ func _physics_process(delta: float) -> void:
 	rotation = _aim_dir.angle()
 
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	var speed := (CROUCH_SPEED if crouching else WALK_SPEED) * body.speed_mult()
+	sprinting = Input.is_action_pressed("sprint") and input != Vector2.ZERO and stamina > 5.0 \
+		and not crouching and using_item == ""
+	var speed := (CROUCH_SPEED if crouching else WALK_SPEED) * body.speed_mult() * equipment.speed_mult()
+	if sprinting:
+		speed *= SPRINT_MULT
+		stamina = maxf(0.0, stamina - 22.0 * delta)
+		_sprint_noise_t -= delta
+		if _sprint_noise_t <= 0.0:
+			_sprint_noise_t = 0.5
+			Events.emit_noise(global_position, 150.0, self)
+	else:
+		stamina = minf(100.0, stamina + (14.0 if input == Vector2.ZERO else 8.0) * delta)
 	if using_item != "":
 		speed *= 0.4
 	if input != Vector2.ZERO:
@@ -91,34 +202,53 @@ func _physics_process(delta: float) -> void:
 		velocity = velocity.move_toward(Vector2.ZERO, FRICTION * delta)
 	move_and_slide()
 
-	_recoil_deg = maxf(0.0, _recoil_deg - weapon.recoil_recovery_deg * delta)
+	_recoil_deg = maxf(0.0, _recoil_deg - (weapon.recoil_recovery_deg if weapon else 6.0) * delta)
 	_cooldown = maxf(0.0, _cooldown - delta)
 
 	_handle_healing(delta)
-	if using_item != "":
+	if using_item != "" or weapon == null:
+		if Input.is_action_just_pressed("swap_weapon") and using_item == "":
+			_swap_weapon()
+		return
+
+	if Input.is_action_just_pressed("swap_weapon"):
+		_swap_weapon()
 		return
 
 	if reloading:
 		_reload_left -= delta
 		if _reload_left <= 0.0:
 			reloading = false
-			ammo = weapon.magazine_size
-			ammo_changed.emit(ammo, weapon.magazine_size, false)
+			_finish_reload()
 	else:
-		if Input.is_action_just_pressed("reload") and ammo < weapon.magazine_size:
+		if Input.is_action_just_pressed("reload") and not input_locked and ammo < weapon.magazine_size and reserve_ammo() > 0:
 			_start_reload()
-		elif Input.is_action_pressed("fire") and _cooldown <= 0.0:
+		elif Input.is_action_pressed("fire") and _cooldown <= 0.0 and not input_locked and not sprinting:
 			_fire()
+
+
+func _swap_weapon() -> void:
+	var other := "pistol" if weapon_slot == "primary" else "primary"
+	if equipment.get_slot(other):
+		_select_weapon(other)
 
 
 func _handle_healing(delta: float) -> void:
 	if using_item == "":
+		if input_locked:
+			return
 		for item in ["bandage", "hemostatic", "splint", "painkiller"]:
-			if Input.is_action_just_pressed("use_" + item) and supplies[item] > 0:
+			if Input.is_action_just_pressed("use_" + item) and equipment.count_of(item) > 0:
 				using_item = item
-				_use_left = USE_TIME[item]
+				_use_left = ItemDB.get_def(item).get("use_time", 3.0)
+				# przedmioty z plecaka wyciąga się dłużej niż z kamizelki, pasa i kieszeni
+				var in_quick := false
+				for e in equipment.bags():
+					if e["quick"] and e["bag"].count_of(item) > 0:
+						in_quick = true
+				if not in_quick:
+					_use_left += 1.5
 				reloading = false
-				# leczenie jest głośne
 				Events.emit_noise(global_position, 120.0, self)
 				break
 	else:
@@ -131,21 +261,39 @@ func _handle_healing(delta: float) -> void:
 				"splint": ok = body.use_splint()
 				"painkiller": ok = body.use_painkiller()
 			if ok:
-				supplies[using_item] -= 1
+				equipment.take(using_item, 1)
 			using_item = ""
 
 
 func _start_reload() -> void:
 	reloading = true
-	_reload_left = weapon.reload_time * body.reload_mult()
+	var t := weapon.reload_time * body.reload_mult()
+	var has_quick := false
+	for e in equipment.bags():
+		if e["quick"] and e["bag"].count_of(_ammo_id()) > 0:
+			has_quick = true
+	if not has_quick:
+		t += 1.2  # amunicja w plecaku
+	_reload_left = t
 	ammo_changed.emit(ammo, weapon.magazine_size, true)
 
 
-func _fire() -> void:
-	if ammo <= 0:
-		_start_reload()
+func _finish_reload() -> void:
+	if weapon_item == null:
 		return
-	ammo -= 1
+	var need := weapon.magazine_size - weapon_item.loaded
+	var got: int = equipment.take(_ammo_id(), need)[0]
+	weapon_item.loaded += got
+	ammo_changed.emit(ammo, weapon.magazine_size, false)
+
+
+func _fire() -> void:
+	if weapon_item.loaded <= 0:
+		if reserve_ammo() > 0:
+			_start_reload()
+		_cooldown = 0.25
+		return
+	weapon_item.loaded -= 1
 	_cooldown = weapon.seconds_per_shot()
 	var spread := deg_to_rad(randf_range(-current_spread_deg(), current_spread_deg()))
 	var dir := _aim_dir.rotated(spread)

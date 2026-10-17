@@ -59,6 +59,7 @@ func _ready() -> void:
 	player = Player.new()
 	player.position = spawn
 	add_child(player)
+	player.setup(_arena_kit())
 	add_child(fx)
 	player.set_fx_layer(fx)
 
@@ -87,6 +88,23 @@ func _process(_delta: float) -> void:
 		get_tree().reload_current_scene()
 	if player:
 		player.queue_redraw()
+
+
+## Zestaw do areny testowej (niezależny od zapisu gry).
+func _arena_kit() -> Equipment:
+	var eq := Equipment.new()
+	var rifle := Item.new("rifle_skm")
+	rifle.loaded = 30
+	eq.equip("primary", rifle)
+	eq.equip("armor", Item.new("armor_3"))
+	eq.equip("head", Item.new("helmet_2"))
+	eq.equip("rig", Item.new("rig_a"))
+	eq.add_auto(Item.new("ammo_556", 120), true)
+	eq.add_auto(Item.new("bandage", 3), true)
+	eq.add_auto(Item.new("hemostatic", 1), true)
+	eq.add_auto(Item.new("splint", 1), true)
+	eq.add_auto(Item.new("painkiller", 2), true)
+	return eq
 
 
 func _add_block(pos: Vector2, color: Color, scale_: float) -> void:

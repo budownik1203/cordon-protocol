@@ -4,13 +4,14 @@ config_version=5
 [application]
 
 config/name="Protokół: Kordon"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/base.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
 [autoload]
 
 Inputs="*res://autoload/inputs.gd"
 Events="*res://autoload/events.gd"
+Game="*res://autoload/game.gd"
 
 [display]
 

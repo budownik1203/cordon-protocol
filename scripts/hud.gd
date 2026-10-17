@@ -1,34 +1,35 @@
 extends Label
-## HUD prototypu: broń, amunicja, stan ciała, zapasy leczenia.
+## HUD: broń i amunicja, wytrzymałość, waga, stan ciała, zapasy leczenia, czas i zagrożenie rajdu.
 
 var _player: Player
-var _ammo_text := ""
+var raid: Node = null
 
 
 func setup(player: Player) -> void:
 	_player = player
-	player.ammo_changed.connect(_on_ammo)
-	_on_ammo(player.ammo, player.weapon.magazine_size, false)
-
-
-func _on_ammo(in_mag: int, mag_size: int, reloading: bool) -> void:
-	_ammo_text = "%s  %d/%d%s" % [_player.weapon.display_name, in_mag, mag_size,
-		"  (przeładowanie)" if reloading else ""]
 
 
 func _process(_delta: float) -> void:
 	if _player == null:
 		return
-	var s: Dictionary = _player.supplies
+	var eq := _player.equipment
 	var lines := PackedStringArray()
-	lines.append(_ammo_text)
+	if _player.weapon:
+		lines.append("%s  %d / %d%s" % [_player.weapon.display_name, _player.ammo, _player.reserve_ammo(),
+			"  (przeładowanie)" if _player.reloading else ""])
+	else:
+		lines.append("Brak broni")
+	lines.append("Wytrzymałość %d  |  %.1f kg (%s)" % [int(_player.stamina), eq.total_weight(),
+		Equipment.LOAD_NAMES[eq.load_level()]])
 	lines.append_array(_player.body.status_lines())
-	lines.append("[1] bandaż %d  [2] hemostatyk %d  [3] szyna %d  [4] środek %d" % [
-		s.bandage, s.hemostatic, s.splint, s.painkiller])
+	lines.append("[1] bandaż %d  [2] hemostat. %d  [3] szyna %d  [4] środek %d" % [
+		eq.count_of("bandage"), eq.count_of("hemostatic"), eq.count_of("splint"), eq.count_of("painkiller")])
 	if _player.using_item != "":
 		lines.append("Używasz: %s" % _player.using_item)
+	if raid:
+		var t: float = raid.elapsed
+		lines.append("Czas %02d:%02d   Zagrożenie %d" % [int(t) / 60, int(t) % 60, int(raid.threat)])
 	if not _player.is_alive():
 		lines.append("")
 		lines.append("NIE ŻYJESZ: %s" % _player.body.cause_of_death)
-		lines.append("Enter - jeszcze raz")
 	text = "\n".join(lines)

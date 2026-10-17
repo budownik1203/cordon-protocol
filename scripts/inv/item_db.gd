@@ -1,0 +1,107 @@
+class_name ItemDB
+extends RefCounted
+## Baza przedmiotów (dane). Docelowo przeniesiona do zasobów .tres / JSON.
+## Klucze: name, w, h, weight (kg za sztukę), value (bony), stack, type, slot, ...
+
+static var _defs: Dictionary = {}
+
+const DOCS := [
+	"RAPORT 14/B. Obiekt reaguje na obecność personelu. Zalecamy ograniczenie obecności personelu. Obiekt reaguje.",
+	"Notatka służbowa: Prosimy nie otwierać drzwi oznaczonych czerwonym pasem. Drzwi były już otwierane. Proszę o wyjaśnienia na piśmie.",
+	"Protokół ewakuacji, pkt 4: w razie powtarzania się pomieszczeń, nie wchodzić do pomieszczenia, które już Pan(i) widział(a).",
+	"Dziennik: Dzień 212 w kwarantannie. Pies sąsiada wrócił. Sąsiad nie wrócił. Pies ma teraz więcej łap.",
+	"Zarządzenie wewnętrzne: wszelkie przypadki 'przejścia' należy kwalifikować jako awarię wentylacji.",
+	"Nagranie 7: Doktor mówi, że to nie eksperyment, tylko 'otwarcie'. Kierownik prosi, by nie używać tego słowa na piśmie.",
+	"Notatka: Kordon utrzymany. Kordon utrzymany. Kordon utrzymany. Kordon utrzymany. (Podpis nieczytelny, pisane jedną ręką).",
+	"Raport medyczny: pacjent twierdzi, że widzi korytarz zza korytarza. Wypisano. Powrót w trybie pilnym.",
+	"Do: Zarząd. Od: Dział Bezpieczeństwa. Temat: wzrost zapotrzebowania na latarki. Odmowa: koszty.",
+	"Ogłoszenie: Kółko wzajemnej adoracji przy Przejściu spotyka się we wtorki. Prosimy nie przynosić świec.",
+]
+
+
+static func _build() -> void:
+	if not _defs.is_empty():
+		return
+	# Amunicja
+	_add("ammo_556", {"name": "Amunicja 5.56", "w": 1, "h": 1, "weight": 0.02, "value": 4, "stack": 60,
+		"type": "ammo", "ammo_type": "556", "pen": 3, "color": Color(0.8, 0.7, 0.3)})
+	_add("ammo_9", {"name": "Amunicja 9 mm", "w": 1, "h": 1, "weight": 0.012, "value": 2, "stack": 60,
+		"type": "ammo", "ammo_type": "9", "pen": 2, "color": Color(0.75, 0.6, 0.3)})
+	# Leczenie
+	_add("bandage", {"name": "Bandaż", "w": 1, "h": 1, "weight": 0.1, "value": 30, "stack": 4,
+		"type": "med", "heal": "bandage", "use_time": 3.0, "color": Color(0.85, 0.85, 0.85)})
+	_add("hemostatic", {"name": "Opatrunek hemostatyczny", "w": 1, "h": 1, "weight": 0.1, "value": 80, "stack": 2,
+		"type": "med", "heal": "hemostatic", "use_time": 4.0, "color": Color(0.8, 0.25, 0.25)})
+	_add("splint", {"name": "Szyna", "w": 1, "h": 2, "weight": 0.3, "value": 60, "stack": 1,
+		"type": "med", "heal": "splint", "use_time": 6.0, "color": Color(0.6, 0.5, 0.3)})
+	_add("painkiller", {"name": "Środek przeciwbólowy", "w": 1, "h": 1, "weight": 0.05, "value": 50, "stack": 4,
+		"type": "med", "heal": "painkiller", "use_time": 2.0, "color": Color(0.3, 0.6, 0.85)})
+	# Bronie
+	_add("rifle_skm", {"name": "Karabin SKM-74", "w": 5, "h": 2, "weight": 3.6, "value": 900, "stack": 1,
+		"type": "weapon", "slot": "primary", "ammo_type": "556", "color": Color(0.35, 0.4, 0.35),
+		"weapon": {"name": "SKM-74", "damage": 32.0, "rpm": 600.0, "mag": 30, "reload": 2.4, "spread": 0.9,
+			"move_spread": 4.0, "recoil": 0.9, "recovery": 6.0, "range": 620.0, "noise": 320.0}})
+	_add("smg_kr", {"name": "Pistolet maszynowy KR-9", "w": 3, "h": 2, "weight": 2.5, "value": 600, "stack": 1,
+		"type": "weapon", "slot": "primary", "ammo_type": "9", "color": Color(0.35, 0.38, 0.4),
+		"weapon": {"name": "KR-9", "damage": 19.0, "rpm": 800.0, "mag": 32, "reload": 2.0, "spread": 1.4,
+			"move_spread": 3.0, "recoil": 0.8, "recovery": 6.5, "range": 380.0, "noise": 240.0}})
+	_add("pistol_p9", {"name": "Pistolet P-9", "w": 2, "h": 1, "weight": 0.9, "value": 250, "stack": 1,
+		"type": "weapon", "slot": "pistol", "ammo_type": "9", "color": Color(0.3, 0.3, 0.35),
+		"weapon": {"name": "P-9", "damage": 22.0, "rpm": 330.0, "mag": 12, "reload": 1.6, "spread": 1.2,
+			"move_spread": 2.5, "recoil": 1.2, "recovery": 7.0, "range": 340.0, "noise": 200.0}})
+	# Pancerz
+	_add("helmet_2", {"name": "Hełm kl. 2", "w": 2, "h": 2, "weight": 1.2, "value": 400, "stack": 1,
+		"type": "armor", "slot": "head", "armor_class": 2, "durability": 40.0, "color": Color(0.4, 0.45, 0.35)})
+	_add("helmet_3", {"name": "Hełm kl. 3", "w": 2, "h": 2, "weight": 1.6, "value": 900, "stack": 1,
+		"type": "armor", "slot": "head", "armor_class": 3, "durability": 50.0, "color": Color(0.4, 0.5, 0.35)})
+	_add("armor_3", {"name": "Kamizelka kuloodporna kl. 3", "w": 3, "h": 3, "weight": 3.5, "value": 800, "stack": 1,
+		"type": "armor", "slot": "armor", "armor_class": 3, "durability": 60.0, "color": Color(0.35, 0.4, 0.5)})
+	_add("armor_4", {"name": "Kamizelka kuloodporna kl. 4", "w": 3, "h": 3, "weight": 5.0, "value": 1800, "stack": 1,
+		"type": "armor", "slot": "armor", "armor_class": 4, "durability": 80.0, "color": Color(0.3, 0.35, 0.55)})
+	# Pojemniki
+	_add("backpack_a", {"name": "Plecak Szturmowy (24 miejsca, -30% wagi)", "w": 4, "h": 5, "weight": 1.2, "value": 500,
+		"stack": 1, "type": "container", "slot": "backpack", "reduction": 0.30, "color": Color(0.45, 0.4, 0.3),
+		"layout": ["XXXXXX", "XXXXXX", "XXXXXX", "XXXXXX"]})
+	_add("backpack_b", {"name": "Plecak Kompaktowy (12 miejsc, -45% wagi)", "w": 3, "h": 4, "weight": 0.8, "value": 650,
+		"stack": 1, "type": "container", "slot": "backpack", "reduction": 0.45, "color": Color(0.4, 0.45, 0.35),
+		"layout": ["XXXX", "XXXX", "XXXX"]})
+	_add("rig_a", {"name": "Kamizelka taktyczna Szeregowa", "w": 3, "h": 3, "weight": 0.9, "value": 350, "stack": 1,
+		"type": "container", "slot": "rig", "reduction": 0.15, "color": Color(0.35, 0.4, 0.38),
+		"layout": ["XX.XX", "XXXXX", "XX.XX"]})
+	_add("rig_b", {"name": "Ładownica Lekka", "w": 3, "h": 2, "weight": 0.5, "value": 250, "stack": 1,
+		"type": "container", "slot": "rig", "reduction": 0.25, "color": Color(0.38, 0.4, 0.33),
+		"layout": ["XXXX", "XXXX"]})
+	_add("belt_a", {"name": "Pas Taktyczny", "w": 4, "h": 1, "weight": 0.4, "value": 180, "stack": 1,
+		"type": "container", "slot": "belt", "reduction": 0.20, "color": Color(0.4, 0.35, 0.3),
+		"layout": ["XXXX"]})
+	_add("secure_a", {"name": "Bezpieczny kontener", "w": 2, "h": 2, "weight": 0.2, "value": 1500, "stack": 1,
+		"type": "container", "slot": "secure", "reduction": 1.0, "color": Color(0.7, 0.6, 0.2),
+		"layout": ["XXX", "XXX"]})
+	# Łupy
+	_add("watch", {"name": "Zegarek", "w": 1, "h": 1, "weight": 0.1, "value": 140, "stack": 1, "type": "loot", "color": Color(0.8, 0.8, 0.4)})
+	_add("radio", {"name": "Radio polowe", "w": 2, "h": 2, "weight": 1.2, "value": 380, "stack": 1, "type": "loot", "color": Color(0.5, 0.55, 0.4)})
+	_add("battery", {"name": "Akumulator", "w": 2, "h": 1, "weight": 0.9, "value": 170, "stack": 1, "type": "loot", "color": Color(0.45, 0.5, 0.55)})
+	_add("tape", {"name": "Kaseta z nagraniem", "w": 1, "h": 1, "weight": 0.05, "value": 90, "stack": 1, "type": "loot", "color": Color(0.4, 0.4, 0.45)})
+	_add("lamp", {"name": "Latarka ręczna", "w": 1, "h": 2, "weight": 0.4, "value": 120, "stack": 1, "type": "loot", "color": Color(0.7, 0.7, 0.5)})
+	_add("sample", {"name": "Próbka (korporacyjna)", "w": 1, "h": 2, "weight": 0.3, "value": 600, "stack": 1, "type": "loot", "color": Color(0.5, 0.8, 0.7)})
+	_add("document", {"name": "Dokument", "w": 1, "h": 1, "weight": 0.02, "value": 50, "stack": 1, "type": "doc", "color": Color(0.9, 0.9, 0.8)})
+	_add("key_exit", {"name": "Klucz do bramy kordonu", "w": 1, "h": 1, "weight": 0.05, "value": 400, "stack": 1, "type": "key", "color": Color(0.9, 0.8, 0.2)})
+
+
+static func _add(id: String, d: Dictionary) -> void:
+	d["id"] = id
+	_defs[id] = d
+
+
+static func get_def(id: String) -> Dictionary:
+	_build()
+	return _defs.get(id, {})
+
+
+static func all_ids() -> Array:
+	_build()
+	return _defs.keys()
+
+
+static func random_doc() -> String:
+	return DOCS[randi() % DOCS.size()]

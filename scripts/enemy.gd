@@ -2,7 +2,19 @@ class_name Enemy
 extends CharacterBody2D
 ## Wróg taktyczny: widzi stożkiem, słyszy strzały, korzysta z osłon, flankuje na rozkaz grupy.
 
+signal killed(enemy: Enemy)
+
 enum State { IDLE, ADVANCE, TO_COVER, IN_COVER, PEEK, FLANK }
+
+const FACTIONS := {
+	"Szabrownicy": {"color": Color(0.72, 0.52, 0.22), "damage": 15.0, "pen": 2, "rpm": 300.0, "spread": 4.5,
+		"speed": 66.0, "reaction": 0.6, "range": 200.0, "vest": 0, "helmet": 0},
+	"Najemnicy": {"color": Color(0.7, 0.25, 0.4), "damage": 22.0, "pen": 3, "rpm": 480.0, "spread": 2.6,
+		"speed": 76.0, "reaction": 0.4, "range": 250.0, "vest": 3, "helmet": 2},
+	"Wojskowi": {"color": Color(0.35, 0.6, 0.35), "damage": 27.0, "pen": 3, "rpm": 420.0, "spread": 2.2,
+		"speed": 72.0, "reaction": 0.35, "range": 270.0, "vest": 4, "helmet": 3},
+}
+const TRAITS := ["ostrożny", "agresywny", "tchórzliwy"]
 
 const STATE_NAMES := ["idle", "advance", "to_cover", "in_cover", "peek", "flank"]
 
@@ -41,6 +53,10 @@ var _burst_left: int = 0
 var _cover_cell: Vector2i = Vector2i.ZERO
 var _peek_cell: Vector2i = Vector2i.ZERO
 var _flash: float = 0.0
+var trait_name: String = "ostrożny"
+var weak_threshold: float = 0.4
+var wait_mult: float = 1.0
+var base_color: Color = Color(0.8, 0.3, 0.25)
 
 
 func setup(p_nav: GridNav, p_player: Player, fx: Node2D) -> void:
@@ -58,8 +74,34 @@ func _ready() -> void:
 	shape.shape = circle
 	add_child(shape)
 	body = Body.new()
-	body.vest = ArmorData.make("Kamizelka", 3, 50.0)
+	configure(faction)
+	body.died.connect(func(_c): killed.emit(self))
 	Events.noise.connect(_on_noise)
+
+
+## Ustawia parametry frakcji i losową cechę charakteru.
+func configure(f: String) -> void:
+	faction = f
+	var cfg: Dictionary = FACTIONS.get(f, FACTIONS["Najemnicy"])
+	base_color = cfg["color"]
+	damage = cfg["damage"]
+	penetration = cfg["pen"]
+	rpm = cfg["rpm"]
+	base_spread_deg = cfg["spread"]
+	move_speed = cfg["speed"]
+	reaction_time = cfg["reaction"]
+	fire_range = cfg["range"]
+	body.vest = ArmorData.make("Kamizelka", cfg["vest"], 50.0) if cfg["vest"] > 0 else null
+	body.helmet = ArmorData.make("Hełm", cfg["helmet"], 40.0) if cfg["helmet"] > 0 and randf() < 0.6 else null
+	trait_name = TRAITS[randi() % TRAITS.size()]
+	match trait_name:
+		"ostrożny":
+			wait_mult = 1.5
+		"agresywny":
+			wait_mult = 0.5
+			reaction_time *= 0.8
+		"tchórzliwy":
+			weak_threshold = 0.65
 
 
 func is_engaged() -> bool:
@@ -121,6 +163,7 @@ func _physics_process(delta: float) -> void:
 		_think_t = 0.15
 		_think()
 	_follow_path(delta)
+	visible = player == null or player.can_see_point(global_position)
 	queue_redraw()
 
 
@@ -157,7 +200,7 @@ func _think() -> void:
 	if not has_target:
 		return
 
-	var weak := body.total_frac() < 0.4 or body.blood < 35.0
+	var weak := body.total_frac() < weak_threshold or body.blood < 35.0
 	match state:
 		State.IDLE:
 			_set_state(State.ADVANCE if not sees_player else _combat_state(weak))
@@ -171,7 +214,7 @@ func _think() -> void:
 				_set_state(State.IN_COVER)
 		State.IN_COVER:
 			facing = (last_known - global_position).normalized()
-			var wait := 3.0 if weak else randf_range(1.0, 2.0)
+			var wait := 3.0 if weak else randf_range(1.0, 2.0) * wait_mult
 			if _state_t > wait and not weak:
 				_set_state(State.PEEK)
 		State.PEEK:
@@ -333,7 +376,7 @@ func _shoot() -> void:
 		end = hit.position
 		var c: Object = hit.collider
 		if c and c.has_method("take_hit"):
-			c.take_hit(damage, dir, penetration)
+			c.take_hit(damage, dir, penetration, faction)
 	Events.emit_noise(global_position, 260.0, self)
 	if _fx and _fx.has_method("add_trace"):
 		_fx.add_trace(from, end, Color(1.0, 0.45, 0.35))
@@ -344,7 +387,7 @@ func pain_factor() -> float:
 
 
 func _draw() -> void:
-	var col := Color(0.8, 0.3, 0.25)
+	var col := base_color
 	if _flash > 0.0:
 		col = Color(1, 1, 1)
 	if body and not body.alive:

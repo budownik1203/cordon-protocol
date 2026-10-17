@@ -26,6 +26,7 @@ func _process(_delta: float) -> bool:
 		_player.weapon.base_spread_deg = 0.0
 		_player.weapon.move_spread_deg = 0.0
 		_player.weapon.recoil_per_shot_deg = 0.0
+		_player.weapon_item.loaded = 30
 	if _frames > 3 and _frames < 40:
 		_player.global_position = _target.global_position - Vector2(80, 0)
 		_player._aim_dir = Vector2.RIGHT
