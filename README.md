@@ -31,6 +31,9 @@ WASD ruch · mysz celowanie/strzał · R wymiana magazynka · V pakowanie luźne
 - Magazynek na broń w slocie: wymiana. Shift+PPM na broni w slocie: wyjmij magazynek. Shift+LPM: połowa stosu. Przyciski: Sortuj, Weź wszystko.
 - Na starcie rajdu sprzęt jest przygotowany (magazynki napełnione, magazynek w broni).
 
+## Próba 3D (spike)
+Przycisk „Test 3D (próba)" w bazie albo `scenes/proto3d.tscn` (F6). Ten sam generator poziomów i model obrażeń, ale świat low poly 3D (kamera z góry pod kątem, latarka z cieniami, wrogowie z AI i pathfindingiem, skrzynie na E, strefy ewakuacji). Postacie i poziom są budowane kodem z sześcianów. WASD, mysz, LPM, R, Shift, C, E, Esc wraca do bazy. To tylko próbka do oceny wyglądu, bez ekwipunku i questów.
+
 ## Testy
 `tools/gd.sh tests/<nazwa>.gd <timeout> [args]` (wymaga zmiennej GODOT).
 

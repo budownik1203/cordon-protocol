@@ -32,6 +32,7 @@ func _ready() -> void:
 	_button(bar, "Zestaw startowy", Vector2(242, 0), Vector2(84, 22), _starter)
 	_button(bar, "Zapisz", Vector2(332, 0), Vector2(44, 22), func(): Game.save_game(); _say("Zapisano."))
 	_button(bar, "Nowa gra", Vector2(382, 0), Vector2(56, 22), _new_game)
+	_button(bar, "Test 3D (próba)", Vector2(-120, 0), Vector2(114, 22), func(): get_tree().change_scene_to_file("res://scenes/proto3d.tscn"))
 	_skip_btn = _button(bar, "Pomiń szkolenie", Vector2(444, 0), Vector2(80, 22), _skip_tutorial)
 	_update_buttons()
 	_update_status()
