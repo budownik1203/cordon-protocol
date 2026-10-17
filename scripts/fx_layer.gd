@@ -5,8 +5,8 @@ const LIFETIME := 0.08
 var _traces: Array = []  # [from, to, age]
 
 
-func add_trace(from: Vector2, to: Vector2) -> void:
-	_traces.append([from, to, 0.0])
+func add_trace(from: Vector2, to: Vector2, color: Color = Color(1.0, 0.9, 0.5)) -> void:
+	_traces.append([from, to, 0.0, color])
 
 
 func _process(delta: float) -> void:
@@ -19,4 +19,5 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	for t in _traces:
 		var a: float = 1.0 - float(t[2]) / LIFETIME
-		draw_line(t[0], t[1], Color(1.0, 0.9, 0.5, a), 1.0)
+		var c: Color = t[3]
+		draw_line(t[0], t[1], Color(c.r, c.g, c.b, a), 1.0)

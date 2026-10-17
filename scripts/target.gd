@@ -18,7 +18,7 @@ func _ready() -> void:
 	add_child(shape)
 
 
-func take_hit(damage: float, _dir: Vector2) -> void:
+func take_hit(damage: float, _dir: Vector2, _penetration: int = 2) -> void:
 	if hp <= 0.0:
 		return
 	hp -= damage

@@ -9,6 +9,11 @@ func _ready() -> void:
 	_key("move_right", KEY_D)
 	_key("reload", KEY_R)
 	_key("crouch", KEY_C)
+	_key("use_bandage", KEY_1)
+	_key("use_hemostatic", KEY_2)
+	_key("use_splint", KEY_3)
+	_key("use_painkiller", KEY_4)
+	_key("restart", KEY_ENTER)
 	_mouse("fire", MOUSE_BUTTON_LEFT)
 
 

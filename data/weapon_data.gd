@@ -15,6 +15,10 @@ extends Resource
 @export var recoil_per_shot_deg: float = 0.9
 @export var recoil_recovery_deg: float = 6.0
 @export var max_range: float = 600.0
+## Penetracja amunicji (1–6) kontra klasa pancerza.
+@export_range(1, 6) var penetration: int = 3
+## Promień hałasu strzału w pikselach (wrogowie reagują).
+@export var noise_radius: float = 300.0
 
 
 func seconds_per_shot() -> float:
