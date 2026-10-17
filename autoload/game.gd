@@ -36,6 +36,7 @@ var last_ctx: String = ""  # kontekst dla dialogów po ostatnim rajdzie
 
 
 func _ready() -> void:
+	_fit_window()
 	if not load_game():
 		new_game()
 
@@ -363,3 +364,33 @@ func load_game() -> bool:
 	extr_by_biome = d.get("extr", {})
 	last_ctx = d.get("ctx", "")
 	return true
+
+
+## Okno dopasowane do ekranu (16:9, w obszarze roboczym) – stały rozmiar 1920x1080 wychodził poza ekran
+## i przy skalowaniu systemu Windows kursor rozjeżdżał się z przyciskami. F11 = pełny ekran.
+func _fit_window() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var win := get_window()
+	if win.mode != Window.MODE_WINDOWED:
+		return
+	var scr := DisplayServer.window_get_current_screen()
+	var area := DisplayServer.screen_get_usable_rect(scr)
+	var w := mini(1920, int(area.size.x * 0.96))
+	var h := int(w * 9.0 / 16.0)
+	var max_h := int(area.size.y * 0.90)
+	if h > max_h:
+		h = max_h
+		w = int(h * 16.0 / 9.0)
+	win.size = Vector2i(w, h)
+	win.position = area.position + (area.size - Vector2i(w, h)) / 2
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
+		var win := get_window()
+		if win.mode == Window.MODE_FULLSCREEN:
+			win.mode = Window.MODE_WINDOWED
+			_fit_window()
+		else:
+			win.mode = Window.MODE_FULLSCREEN
